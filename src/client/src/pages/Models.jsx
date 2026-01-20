@@ -1,0 +1,297 @@
+import React, { useState, useEffect } from 'react';
+import { modelsAPI } from '../utils/api';
+
+function Models() {
+  const [models, setModels] = useState([]);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [newModel, setNewModel] = useState({ alias: '', model_id: '' });
+
+  useEffect(() => {
+    loadModels();
+    loadAvailableModels();
+  }, []);
+
+  const loadModels = async () => {
+    try {
+      const res = await modelsAPI.getAll();
+      setModels(res.data.models);
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAvailableModels = async () => {
+    try {
+      const res = await modelsAPI.getAvailable();
+      setAvailableModels(res.data.models);
+    } catch (err) {
+      console.error('Failed to load available models:', err);
+    }
+  };
+
+  const handleAddModel = async (e) => {
+    e.preventDefault();
+    try {
+      await modelsAPI.add(newModel);
+      setSuccess('Model added successfully');
+      setShowAddModal(false);
+      setNewModel({ alias: '', model_id: '' });
+      loadModels();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    }
+  };
+
+  const handleDeleteModel = async (id) => {
+    if (!confirm('Are you sure you want to delete this model?')) return;
+    try {
+      await modelsAPI.delete(id);
+      setSuccess('Model deleted successfully');
+      loadModels();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    }
+  };
+
+  const handleStartService = async (id) => {
+    try {
+      await modelsAPI.start(id);
+      setSuccess('Service started successfully');
+      loadModels();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    }
+  };
+
+  const handleStopService = async (id) => {
+    try {
+      await modelsAPI.stop(id);
+      setSuccess('Service stopped successfully');
+      loadModels();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    }
+  };
+
+  const handleLoadModel = async (id) => {
+    try {
+      setSuccess('Loading model... this may take a while on first download');
+      await modelsAPI.load(id);
+      setSuccess('Model loaded successfully');
+      loadModels();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    }
+  };
+
+  const handleViewLogs = async (model) => {
+    try {
+      const res = await modelsAPI.logs(model.id);
+      setLogs(res.data.logs);
+      setSelectedModel(model);
+      setShowLogsModal(true);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const badgeClass = {
+      running: 'badge-success',
+      stopped: 'badge-warning',
+      error: 'badge-danger'
+    }[status] || 'badge-info';
+    
+    return <span className={`badge ${badgeClass}`}>{status}</span>;
+  };
+
+  if (loading) return <div className="loading">Loading models...</div>;
+
+  return (
+    <div>
+      <h2 style={{ marginBottom: '1.5rem', fontSize: '2rem' }}>Models</h2>
+
+      {error && <div className="error">{error}</div>}
+      {success && <div className="success">{success}</div>}
+
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div className="card-header" style={{ marginBottom: 0, paddingBottom: 0, border: 'none' }}>
+            Configured Models
+          </div>
+          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+            Add Model
+          </button>
+        </div>
+
+        {models.length === 0 ? (
+          <p style={{ color: '#7f8c8d', padding: '1rem 0' }}>
+            No models configured. Click "Add Model" to get started.
+          </p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Alias</th>
+                <th>Model ID</th>
+                <th>Status</th>
+                <th>Endpoint</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {models.map(model => (
+                <tr key={model.id}>
+                  <td><strong>{model.alias}</strong></td>
+                  <td><code>{model.model_id}</code></td>
+                  <td>{getStatusBadge(model.status)}</td>
+                  <td>{model.endpoint || '-'}</td>
+                  <td>
+                    {model.status === 'stopped' ? (
+                      <button 
+                        className="btn btn-success" 
+                        onClick={() => handleStartService(model.id)}
+                      >
+                        Start
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn btn-danger" 
+                        onClick={() => handleStopService(model.id)}
+                      >
+                        Stop
+                      </button>
+                    )}
+                    {model.status === 'running' && (
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => handleLoadModel(model.id)}
+                      >
+                        Load
+                      </button>
+                    )}
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={() => handleViewLogs(model)}
+                    >
+                      Logs
+                    </button>
+                    <button 
+                      className="btn btn-danger" 
+                      onClick={() => handleDeleteModel(model.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Add Model Modal */}
+      {showAddModal && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">Add Model</div>
+            <form onSubmit={handleAddModel}>
+              <div className="form-group">
+                <label className="form-label">Model Alias</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={newModel.alias}
+                  onChange={(e) => setNewModel({ ...newModel, alias: e.target.value })}
+                  placeholder="e.g., phi-3-mini"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Model ID</label>
+                <select
+                  className="form-control"
+                  value={newModel.model_id}
+                  onChange={(e) => {
+                    const selected = availableModels.find(m => m.id === e.target.value);
+                    setNewModel({ 
+                      alias: selected?.alias || e.target.value, 
+                      model_id: e.target.value 
+                    });
+                  }}
+                  required
+                >
+                  <option value="">Select a model...</option>
+                  {availableModels.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.description || m.id}
+                    </option>
+                  ))}
+                </select>
+                <small style={{ color: '#7f8c8d', marginTop: '0.25rem', display: 'block' }}>
+                  Or enter a custom model ID manually in the alias field
+                </small>
+              </div>
+              <div style={{ marginTop: '1.5rem' }}>
+                <button type="submit" className="btn btn-primary">Add Model</button>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Logs Modal */}
+      {showLogsModal && (
+        <div className="modal-overlay" onClick={() => setShowLogsModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              Logs: {selectedModel?.alias}
+            </div>
+            <div style={{ maxHeight: '400px', overflow: 'auto', background: '#f8f9fa', padding: '1rem', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+              {logs.length === 0 ? (
+                <p>No logs available</p>
+              ) : (
+                logs.map(log => (
+                  <div key={log.id} style={{ marginBottom: '0.5rem', borderBottom: '1px solid #ecf0f1', paddingBottom: '0.5rem' }}>
+                    <span style={{ color: log.level === 'error' ? '#e74c3c' : '#2c3e50' }}>
+                      [{new Date(log.created_at * 1000).toLocaleString()}] {log.level.toUpperCase()}: {log.message}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+            <div style={{ marginTop: '1rem' }}>
+              <button className="btn btn-secondary" onClick={() => setShowLogsModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Models;

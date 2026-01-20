@@ -1,0 +1,337 @@
+# Known Limitations
+
+This document describes known limitations and constraints of FLPerformance when working with Microsoft Foundry Local.
+
+## 1. Service-Per-Model Architecture
+
+### Requirement
+The application is designed to run **one Foundry Local service instance per model** to enable true parallel benchmarking and isolated performance measurement.
+
+### Current Implementation
+The orchestrator (`/src/server/orchestrator.js`) attempts to:
+- Spawn separate Foundry Local processes with the `--model` flag
+- Assign each service a unique dynamic port (starting from 5000)
+- Maintain independent OpenAI-compatible API clients per service
+- Track service lifecycle independently
+
+### Discovered Constraints
+
+#### 1.1 Foundry Local Runtime Constraints
+
+**Constraint:** Foundry Local's actual architecture may impose limitations on simultaneous service instances.
+
+**Possible Scenarios:**
+1. **Single Management Service:** Foundry Local may use a single management service that coordinates multiple model instances
+2. **Port Restrictions:** The CLI may not support custom port assignment per invocation
+3. **Resource Locking:** Models may lock shared resources (e.g., cache directories, GPU memory) preventing parallel loading
+4. **Process Model:** Foundry Local may be designed as a singleton service that loads models on demand rather than running multiple concurrent services
+
+**Mitigation in Code:**
+- The orchestrator is built to handle dynamic endpoints
+- Services are tracked independently in a Map
+- Error handling captures and reports startup failures
+- The UI clearly indicates which service is tied to which model
+
+**User Impact:**
+- If Foundry Local limits simultaneous services, benchmarks will run sequentially
+- The application will detect and report "service already running" or port conflicts
+- Benchmark execution time will increase linearly with the number of models
+
+**Workaround:**
+If true parallel services are not supported:
+1. Run benchmarks sequentially (current fallback behavior)
+2. Use the same service with model switching (requires Foundry Local support)
+3. Document which models can coexist and which require exclusive access
+
+#### 1.2 Model Loading Behavior
+
+**Constraint:** Foundry Local downloads and caches models on first use.
+
+**Implications:**
+- First model load triggers download (can take minutes to hours depending on model size and network)
+- Subsequent loads use cached models
+- Cache location may be shared across all Foundry Local instances
+- Multiple instances attempting to download the same model simultaneously may conflict
+
+**Mitigation:**
+- The "Load Model" operation is separate from "Start Service"
+- First load shows user notification: "Loading model... this may take a while"
+- Errors during download are captured and displayed
+- Users can pre-download models via Foundry Local CLI before using the app
+
+**Recommendation:**
+Pre-download models before benchmarking:
+```bash
+foundry-local models download phi-3-mini-4k-instruct
+foundry-local models download llama-3.2-1b-instruct
+```
+
+## 2. Resource Metrics Availability
+
+### Cross-Platform Support
+
+**CPU and RAM:** Available on all platforms via `systeminformation` library.
+
+**GPU Metrics:** Platform-dependent
+
+| Platform | GPU Detection | GPU Utilization |
+|----------|--------------|-----------------|
+| Windows  | ✅ Yes       | ✅ Yes (NVIDIA/AMD) |
+| Linux    | ✅ Yes       | ✅ Yes (NVIDIA with nvidia-smi) |
+| macOS    | ⚠️ Partial  | ❌ Limited      |
+
+**Limitation:** macOS does not expose GPU utilization metrics through standard APIs. GPU metrics will show as `null` on macOS.
+
+**Mitigation:**
+- The benchmark engine handles `null` GPU values gracefully
+- Results tables show "-" for unavailable metrics
+- Aggregate statistics exclude null values from averages
+- Documentation clearly states platform support
+
+### Resource Accuracy
+
+**Constraint:** Resource metrics are snapshots taken before/after each inference request.
+
+**Implications:**
+- Does not capture peak resource usage during inference
+- May miss transient spikes in CPU/GPU utilization
+- Averages may not reflect true resource consumption of rapid inferences
+
+**Mitigation:**
+- Take multiple samples during benchmark runs
+- Average across all iterations for stability
+- Document that metrics are approximations
+
+**Future Enhancement:**
+- Continuous resource monitoring during benchmarks
+- Peak usage tracking
+- Resource graphs over time
+
+## 3. Streaming and TTFT Measurement
+
+### Streaming Support
+
+**Constraint:** Time-to-first-token (TTFT) measurement requires streaming to be enabled.
+
+**Foundry Local Support:** OpenAI-compatible streaming is documented as supported, but actual availability may vary by model.
+
+**Implications:**
+- If streaming is not available for a model, TTFT will be `null`
+- Non-streaming benchmarks only measure end-to-end latency
+- Some models may not support streaming at all
+
+**Mitigation:**
+- Streaming is configurable in benchmark settings
+- Code handles both streaming and non-streaming modes
+- Results clearly indicate when TTFT is not available
+
+**User Action:**
+- Test streaming support for your models
+- Disable streaming if it causes errors
+- Compare end-to-end latency when streaming is unavailable
+
+## 4. Concurrency Limitations
+
+### Current Implementation
+
+**Constraint:** Benchmarks run with `concurrency: 1` by default (sequential requests).
+
+**Reason:** 
+- Ensures accurate latency measurement
+- Avoids resource contention
+- Prevents rate limiting or throttling
+
+**Implications:**
+- Benchmarks take longer to complete
+- Does not test multi-request throughput
+- May not reflect real-world concurrent usage
+
+**Mitigation:**
+- Concurrency is configurable in the UI
+- Higher concurrency can be tested manually
+- Results may vary with increased concurrency
+
+**Future Enhancement:**
+- Dedicated concurrency benchmark
+- Thread pool for parallel requests
+- Queue depth metrics
+
+## 5. Benchmark Suite Limitations
+
+### Prompt Diversity
+
+**Constraint:** The default benchmark suite includes 9 scenarios.
+
+**Limitation:**
+- May not cover all use cases
+- Prompts are English-only
+- No multilingual evaluation
+- Limited context length testing
+
+**Mitigation:**
+- Users can create custom benchmark suites
+- Suite format is JSON and well-documented
+- Place custom suites in `/benchmarks/suites/`
+
+**Custom Suite Format:**
+```json
+{
+  "name": "custom",
+  "description": "Custom benchmark",
+  "scenarios": [
+    {
+      "name": "Scenario Name",
+      "prompt": "Your prompt here",
+      "max_tokens": 150,
+      "expected_output_length": "medium"
+    }
+  ]
+}
+```
+
+### Token Counting
+
+**Constraint:** Token counts rely on OpenAI API's `usage` field or streaming chunk counts.
+
+**Limitation:**
+- Different tokenizers yield different counts
+- Streaming counts may be approximations
+- No independent tokenizer validation
+
+**Mitigation:**
+- Use consistent measurement method across all models
+- Relative comparison is still valid
+- Document tokenization method in results
+
+## 6. Error Handling and Retries
+
+### No Automatic Retries
+
+**Constraint:** Failed inference requests are not retried automatically.
+
+**Implication:**
+- Transient errors count toward error rate
+- Network hiccups affect results
+- No differentiation between permanent and transient failures
+
+**Mitigation:**
+- Timeouts are configurable
+- Error rates are reported explicitly
+- Users can re-run benchmarks if errors seem anomalous
+
+**Future Enhancement:**
+- Retry logic with exponential backoff
+- Separate transient vs. permanent error tracking
+
+## 7. Database and Storage
+
+### SQLite Limitations
+
+**Constraint:** Uses SQLite for simplicity and portability.
+
+**Limitations:**
+- Single-writer (no concurrent benchmark runs from different processes)
+- Limited to local filesystem
+- No built-in replication or backup
+- Size grows over time without cleanup
+
+**Mitigation:**
+- Suitable for single-user local development
+- Results are also exported as JSON/CSV
+- Users can manually backup `/results/benchmarks.db`
+
+**Recommendation:**
+- Periodically export important results
+- Manually archive or delete old runs if database grows large
+
+## 8. UI Real-Time Updates
+
+### Polling-Based Updates
+
+**Constraint:** No WebSocket or server-sent events for real-time updates.
+
+**Implication:**
+- Benchmark progress is not visible in real-time
+- Users must manually refresh Results page
+- Dashboard statistics refresh every 10 seconds
+
+**Mitigation:**
+- Clear messaging when benchmark starts
+- Suggestion to check Results tab after a few minutes
+- Polling can be added manually via JavaScript timers
+
+**Future Enhancement:**
+- WebSocket integration for live progress
+- Real-time log streaming
+- Progress bars during benchmark execution
+
+## 9. Authentication and Security
+
+### No Authentication
+
+**Constraint:** Application assumes trusted local environment.
+
+**Implication:**
+- Anyone with network access to the machine can access the UI
+- No user management or access control
+- All operations are performed as the same user
+
+**Mitigation:**
+- Designed for local development only
+- Bind to `localhost` by default
+- Document that it should not be exposed to public networks
+
+**Production Considerations:**
+If deploying beyond local development:
+- Add authentication middleware
+- Implement role-based access control
+- Use HTTPS/TLS
+- Add rate limiting
+
+## 10. Model Catalog Discovery
+
+### Limited Model Discovery
+
+**Constraint:** Available models are queried from Foundry Local CLI or hardcoded as fallback.
+
+**Limitation:**
+- If CLI query fails, only a small preset list is shown
+- New models require updating the fallback list or relying on CLI
+- No model metadata (size, capabilities, etc.) displayed
+
+**Mitigation:**
+- Users can manually enter any model ID
+- Fallback list includes common models
+- Error messages guide users to check Foundry Local documentation
+
+**Recommendation:**
+Check Foundry Local documentation for the complete model catalog:
+```bash
+foundry-local models list
+```
+
+## Summary
+
+| Limitation | Impact | Severity | Workaround |
+|------------|--------|----------|------------|
+| Service-per-model constraints | May require sequential benchmarking | High | Document actual Foundry Local behavior |
+| GPU metrics on macOS | Missing data in results | Medium | Use CPU/RAM metrics only |
+| TTFT requires streaming | No TTFT for non-streaming models | Medium | Use end-to-end latency |
+| No automatic retries | Transient errors affect results | Low | Re-run benchmarks if needed |
+| Polling-based UI | No real-time progress | Low | Manual refresh |
+| SQLite single-writer | Can't run concurrent benchmarks | Medium | Run one benchmark at a time |
+| No authentication | Not suitable for public deployment | High | Deploy locally only |
+
+## Reporting Issues
+
+If you encounter limitations not documented here:
+
+1. Check Foundry Local documentation and support channels
+2. View logs in the UI for specific error messages
+3. Check `/results/benchmarks.db` for stored data
+4. Review console output for server errors
+5. File an issue with:
+   - OS and version
+   - Foundry Local version
+   - Model being tested
+   - Complete error messages

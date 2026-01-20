@@ -1,0 +1,77 @@
+{
+  "name": "default",
+  "description": "Default benchmark suite with common LLM evaluation scenarios",
+  "version": "1.0.0",
+  "scenarios": [
+    {
+      "name": "Simple Q&A - Short",
+      "description": "Short question answering",
+      "prompt": "What is the capital of France?",
+      "max_tokens": 50,
+      "expected_output_length": "short"
+    },
+    {
+      "name": "Simple Q&A - Medium",
+      "description": "Medium length question answering",
+      "prompt": "Explain how photosynthesis works in plants.",
+      "max_tokens": 150,
+      "expected_output_length": "medium"
+    },
+    {
+      "name": "Reasoning - Logic Puzzle",
+      "description": "Test logical reasoning capabilities",
+      "prompt": "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly? Explain your reasoning step by step.",
+      "max_tokens": 200,
+      "expected_output_length": "medium"
+    },
+    {
+      "name": "Reasoning - Math Problem",
+      "description": "Multi-step mathematical reasoning",
+      "prompt": "A train travels 120 km in 2 hours. If it maintains the same speed, how far will it travel in 5 hours? Show your work.",
+      "max_tokens": 150,
+      "expected_output_length": "medium"
+    },
+    {
+      "name": "Summarization - Short Text",
+      "description": "Summarize a short passage",
+      "prompt": "Summarize the following in one sentence: Climate change refers to long-term shifts in temperatures and weather patterns. These shifts may be natural, but since the 1800s, human activities have been the main driver of climate change, primarily due to the burning of fossil fuels which produces heat-trapping gases.",
+      "max_tokens": 100,
+      "expected_output_length": "short"
+    },
+    {
+      "name": "Summarization - Technical Content",
+      "description": "Summarize technical information",
+      "prompt": "Summarize the key points: Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed. It focuses on developing computer programs that can access data and use it to learn for themselves. The process begins with observations or data, such as examples, direct experience, or instruction, to look for patterns in data and make better decisions in the future.",
+      "max_tokens": 150,
+      "expected_output_length": "medium"
+    },
+    {
+      "name": "Creative Writing",
+      "description": "Generate creative content",
+      "prompt": "Write a short story opening (2-3 sentences) about a detective who discovers something unusual.",
+      "max_tokens": 100,
+      "expected_output_length": "short"
+    },
+    {
+      "name": "Code Generation",
+      "description": "Simple code generation task",
+      "prompt": "Write a Python function that calculates the factorial of a number using recursion.",
+      "max_tokens": 150,
+      "expected_output_length": "medium"
+    },
+    {
+      "name": "Long-form Response",
+      "description": "Extended response generation",
+      "prompt": "Explain the water cycle in detail, including all major processes such as evaporation, condensation, precipitation, and collection.",
+      "max_tokens": 300,
+      "expected_output_length": "long"
+    }
+  ],
+  "default_config": {
+    "iterations": 5,
+    "concurrency": 1,
+    "timeout": 30000,
+    "temperature": 0.7,
+    "streaming": true
+  }
+}
