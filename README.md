@@ -2,6 +2,8 @@
 
 A local application with UI for benchmarking multiple Models (SLMs) running via **Microsoft Foundry Local**.
 
+📖 **[Read the full story: How we built FLPerformance](BLOGPOST.md)** - Learn about the architecture decisions, challenges faced, and how to get real-world LLM performance metrics on your local hardware.
+
 ## ✨ New: Easy Startup Script
 
 **Windows users**: Just run `.\START_APP.ps1` to start everything! Opens 2 terminals + browser automatically. 🚀
