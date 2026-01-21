@@ -451,12 +451,36 @@ function Results() {
                         <BarChart data={modelAggregates}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="model" />
-                          <YAxis />
+                          <YAxis
+                            yAxisId="left"
+                            orientation="left"
+                            label={{ value: 'Time (ms)', angle: -90, position: 'insideLeft' }}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            label={{ value: 'Tokens/sec', angle: 90, position: 'insideRight' }}
+                          />
                           <Tooltip />
                           <Legend />
-                          <Bar dataKey="avgTtft" fill="#9b59b6" name="Avg TTFT (ms)" />
-                          <Bar dataKey="avgTpot" fill="#1abc9c" name="Avg TPOT (ms)" />
-                          <Bar dataKey="avgGenTps" fill="#e67e22" name="Avg GenTPS" />
+                          <Bar
+                            dataKey="avgTtft"
+                            yAxisId="left"
+                            fill="#9b59b6"
+                            name="Avg TTFT (ms)"
+                          />
+                          <Bar
+                            dataKey="avgTpot"
+                            yAxisId="left"
+                            fill="#1abc9c"
+                            name="Avg TPOT (ms)"
+                          />
+                          <Bar
+                            dataKey="avgGenTps"
+                            yAxisId="right"
+                            fill="#e67e22"
+                            name="Avg GenTPS"
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
