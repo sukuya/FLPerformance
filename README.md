@@ -6,7 +6,7 @@ A local application with UI for benchmarking multiple Models (SLMs) running via 
 
 ## ✨ New: Easy Startup Script
 
-**Windows users**: Just run `.\START_APP.ps1` to start everything! Opens 2 terminals + browser automatically. 🚀
+**Windows users**: If you have Node.js installed, just run `.\START_APP.ps1` to start everything! Opens 2 terminals + browser automatically. 🚀
 
 ### ✅ Working Features
 - **Complete Benchmark System**: Full end-to-end benchmarking with accurate metrics
@@ -53,9 +53,26 @@ foundry --version
 cd C:\Users\YourUsername\path\to\FLPerformance
 ```
 
-**Step 2: Run installation script**
+**Step 2: Install Node.js (if not already installed)**
+
 ```powershell
-# Windows
+# Windows - Install Node.js LTS
+winget install --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
+
+# After installation, RESTART YOUR TERMINAL for PATH updates
+```
+
+**macOS:**
+```bash
+brew install node
+```
+
+Or download from: https://nodejs.org/
+
+**Step 3: Run installation script**
+
+```powershell
+# Windows 
 .\scripts\install.ps1
 
 # macOS/Linux
@@ -65,7 +82,7 @@ chmod +x scripts/install.sh && ./scripts/install.sh
 **Note**: Installation uses `--no-optional` flag to skip SQLite database (requires build tools).  
 Results are saved as JSON files instead. This works perfectly for all features!
 
-**Step 3: Start the application**
+**Step 4: Start the application**
 ```powershell
 # Easy Mode - Opens 2 terminals + browser automatically (Windows)
 .\START_APP.ps1
