@@ -378,10 +378,11 @@ class BenchmarkEngine {
           if (!modelInfo) {
             benchmarkLogger.warn('Model not loaded in cache, attempting to load', { modelId, alias: model.alias, model_id: model.model_id });
             try {
-              modelInfo = await orchestrator.loadModel(modelId, model.alias || model.model_id);
+              // Use model_id first (contains device-specific variant)
+              modelInfo = await orchestrator.loadModel(modelId, model.model_id || model.alias);
             } catch (err) {
               benchmarkLogger.error('Auto-load failed', { modelId, error: err.message });
-              storage.saveLog('benchmark', runId, 'error', `Auto-load failed for ${model.alias || model.model_id}: ${err.message}`);
+              storage.saveLog('benchmark', runId, 'error', `Auto-load failed for ${model.model_id || model.alias}: ${err.message}`);
               return null;
             }
           }
@@ -391,7 +392,8 @@ class BenchmarkEngine {
           if (!health.healthy) {
             benchmarkLogger.warn('Model unhealthy, retrying load', { modelId, alias: modelInfo.alias, health });
             try {
-              await orchestrator.loadModel(modelId, model.alias || model.model_id);
+              // Use model_id first (contains device-specific variant)
+              await orchestrator.loadModel(modelId, model.model_id || model.alias);
               health = await orchestrator.checkModelHealth(modelInfo.alias || model.alias || model.model_id);
             } catch (err) {
               benchmarkLogger.error('Reload failed', { modelId, error: err.message });

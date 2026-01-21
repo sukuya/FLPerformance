@@ -108,16 +108,26 @@ app.post('/api/models', async (req, res) => {
 app.delete('/api/models/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Stop service if running
-    const service = orchestrator.getService(id);
-    if (service) {
-      await orchestrator.stopService(id);
+    const model = storage.getModel(id);
+
+    if (!model) {
+      return res.status(404).json({ error: 'Model not found' });
     }
-    
+
+    // Unload model if currently loaded
+    const loadedModelInfo = orchestrator.getLoadedModelInfo(id);
+    if (loadedModelInfo) {
+      logger.info('Unloading model before deletion', { id, alias: model.alias });
+      try {
+        await orchestrator.unloadModel(id, model.model_id || model.alias);
+      } catch (err) {
+        logger.warn('Failed to unload model, continuing with deletion', { id, error: err.message });
+      }
+    }
+
     storage.deleteModel(id);
     logger.info('Model deleted', { id });
-    
+
     res.json({ success: true });
   } catch (error) {
     logger.error('Failed to delete model', { error: error.message });
@@ -139,7 +149,8 @@ app.post('/api/models/:id/start', async (req, res) => {
     }
 
     // Load model (will initialize service if needed)
-    const modelInfo = await orchestrator.loadModel(id, model.alias || model.model_id);
+    // Use model_id first (contains device-specific variant like "...-cpu:1")
+    const modelInfo = await orchestrator.loadModel(id, model.model_id || model.alias);
     
     logger.info('Model loaded', { id, modelInfo });
     
@@ -172,7 +183,8 @@ app.post('/api/models/:id/stop', async (req, res) => {
       return res.status(404).json({ error: 'Model not found' });
     }
     
-    await orchestrator.unloadModel(id, model.alias || model.model_id);
+    // Use model_id first (contains device-specific variant)
+    await orchestrator.unloadModel(id, model.model_id || model.alias);
     logger.info('Model unloaded', { id });
     
     res.json({ success: true });
