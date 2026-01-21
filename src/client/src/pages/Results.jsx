@@ -119,6 +119,9 @@ function Results() {
           model_id: result.model_id,
           model: modelKey,
           tps: [],
+          ttft: [],
+          tpot: [],
+          gen_tps: [],
           latency_p50: [],
           latency_p95: [],
           latency_p99: [],
@@ -126,8 +129,11 @@ function Results() {
           scenarios: 0
         };
       }
-      
+
       if (result.tps) modelMap[modelKey].tps.push(result.tps);
+      if (result.ttft) modelMap[modelKey].ttft.push(result.ttft);
+      if (result.tpot) modelMap[modelKey].tpot.push(result.tpot);
+      if (result.gen_tps) modelMap[modelKey].gen_tps.push(result.gen_tps);
       if (result.latency_p50) modelMap[modelKey].latency_p50.push(result.latency_p50);
       if (result.latency_p95) modelMap[modelKey].latency_p95.push(result.latency_p95);
       if (result.latency_p99) modelMap[modelKey].latency_p99.push(result.latency_p99);
@@ -138,6 +144,9 @@ function Results() {
     return Object.values(modelMap).map(m => ({
       model: m.model, // Use alias instead of model_id
       avgTps: m.tps.length ? (m.tps.reduce((a, b) => a + b, 0) / m.tps.length).toFixed(2) : 0,
+      avgTtft: m.ttft.length ? (m.ttft.reduce((a, b) => a + b, 0) / m.ttft.length).toFixed(2) : 0,
+      avgTpot: m.tpot.length ? (m.tpot.reduce((a, b) => a + b, 0) / m.tpot.length).toFixed(2) : 0,
+      avgGenTps: m.gen_tps.length ? (m.gen_tps.reduce((a, b) => a + b, 0) / m.gen_tps.length).toFixed(2) : 0,
       avgP50: m.latency_p50.length ? (m.latency_p50.reduce((a, b) => a + b, 0) / m.latency_p50.length).toFixed(0) : 0,
       avgP95: m.latency_p95.length ? (m.latency_p95.reduce((a, b) => a + b, 0) / m.latency_p95.length).toFixed(0) : 0,
       avgP99: m.latency_p99.length ? (m.latency_p99.reduce((a, b) => a + b, 0) / m.latency_p99.length).toFixed(0) : 0,
@@ -435,6 +444,46 @@ function Results() {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
+
+                    <div className="card">
+                      <div className="card-header">⏱️ Generation Performance (TPOT & GenTPS)</div>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={modelAggregates}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="model" />
+                          <YAxis
+                            yAxisId="left"
+                            orientation="left"
+                            label={{ value: 'Time (ms)', angle: -90, position: 'insideLeft' }}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            label={{ value: 'Tokens/sec', angle: 90, position: 'insideRight' }}
+                          />
+                          <Tooltip />
+                          <Legend />
+                          <Bar
+                            dataKey="avgTtft"
+                            yAxisId="left"
+                            fill="#9b59b6"
+                            name="Avg TTFT (ms)"
+                          />
+                          <Bar
+                            dataKey="avgTpot"
+                            yAxisId="left"
+                            fill="#1abc9c"
+                            name="Avg TPOT (ms)"
+                          />
+                          <Bar
+                            dataKey="avgGenTps"
+                            yAxisId="right"
+                            fill="#e67e22"
+                            name="Avg GenTPS"
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
 
                   <div className="card">
@@ -488,6 +537,8 @@ function Results() {
                       <th>Scenario</th>
                       <th>TPS</th>
                       <th>TTFT (ms)</th>
+                      <th>TPOT (ms)</th>
+                      <th>GenTPS</th>
                       <th>P50 (ms)</th>
                       <th>P95 (ms)</th>
                       <th>P99 (ms)</th>
@@ -515,6 +566,12 @@ function Results() {
                           </span>
                         </td>
                         <td>{result.ttft?.toFixed(0) || '-'}</td>
+                        <td>{result.tpot?.toFixed(2) || '-'}</td>
+                        <td>
+                          <span style={{ fontWeight: 'bold', color: '#e67e22' }}>
+                            {result.gen_tps?.toFixed(2) || '-'}
+                          </span>
+                        </td>
                         <td>{result.latency_p50?.toFixed(0) || '-'}</td>
                         <td>{result.latency_p95?.toFixed(0) || '-'}</td>
                         <td>{result.latency_p99?.toFixed(0) || '-'}</td>

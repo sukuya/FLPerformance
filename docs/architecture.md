@@ -170,8 +170,11 @@ Fixed model lookup in API endpoints from `model.alias || model.model_id` to `mod
 - Persist results to storage
 
 **Key Metrics:**
-- **Throughput (TPS):** Tokens per second
-- **Latency:** TTFT (streaming), P50/P95/P99 end-to-end
+- **Throughput (TPS):** Overall tokens per second
+- **Time to First Token (TTFT):** Initial response time (streaming only)
+- **Time Per Output Token (TPOT):** Average inter-token delay after first token (streaming only)
+- **Generation TPS (GenTPS):** Token generation rate = 1000/TPOT (streaming only)
+- **Latency:** P50/P95/P99 end-to-end completion time
 - **Stability:** Error rate, timeout rate
 - **Resources:** CPU, RAM, GPU utilization (best-effort)
 
@@ -214,7 +217,7 @@ Fixed model lookup in API endpoints from `model.alias || model.model_id` to `mod
 - id, suite_name, model_ids (JSON), config (JSON), hardware_info (JSON), status, started_at, completed_at
 
 **benchmark_results**
-- id, run_id, model_id, scenario, tps, ttft, latency_p50, latency_p95, latency_p99, error_rate, timeout_rate, cpu_avg, ram_avg, gpu_avg, raw_data (JSON)
+- id, run_id, model_id, scenario, tps, ttft, tpot, gen_tps, latency_p50, latency_p95, latency_p99, error_rate, timeout_rate, cpu_avg, ram_avg, gpu_avg, raw_data (JSON)
 
 **logs**
 - id, entity_type, entity_id, level, message, metadata (JSON), created_at

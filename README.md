@@ -234,8 +234,9 @@ FLPerformance/
 - Automatic model download and caching
 
 ### Benchmark Suite
-- **Throughput (TPS)**: Tokens generated per second
-- **Latency**: Time to first token (TTFT) and end-to-end completion time
+- **Throughput (TPS)**: Tokens generated per second (overall)
+- **Latency**: Time to first token (TTFT), time per output token (TPOT), and end-to-end completion time
+- **Generation Speed (GenTPS)**: Token generation rate after first token (1000/TPOT)
 - **Stability**: Error rate and timeout tracking
 - **Resource Usage**: CPU, RAM, and GPU utilization (platform-dependent)
 

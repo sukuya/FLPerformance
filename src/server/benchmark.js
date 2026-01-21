@@ -92,6 +92,7 @@ class BenchmarkEngine {
       endTime: null,
       ttft: null,
       tokens: 0,
+      interTokenDelays: [],
       error: null,
       timeout: false
     };
@@ -105,6 +106,7 @@ class BenchmarkEngine {
 
       const startTime = Date.now();
       let firstTokenTime = null;
+      let lastTokenTime = null;
 
       // Get OpenAI client from orchestrator
       const client = orchestrator.getOpenAIClient();
@@ -126,12 +128,21 @@ class BenchmarkEngine {
         }, { signal: controller.signal });
 
         for await (const chunk of stream) {
-          if (!firstTokenTime && chunk.choices[0]?.delta?.content) {
-            firstTokenTime = Date.now();
-            metrics.ttft = firstTokenTime - startTime;
-          }
-          
           if (chunk.choices[0]?.delta?.content) {
+            const currentTokenTime = Date.now();
+
+            if (!firstTokenTime) {
+              // First token: record TTFT
+              firstTokenTime = currentTokenTime;
+              metrics.ttft = firstTokenTime - startTime;
+              lastTokenTime = currentTokenTime;
+            } else {
+              // Subsequent tokens: calculate inter-token delay
+              const interTokenDelay = currentTokenTime - lastTokenTime;
+              metrics.interTokenDelays.push(interTokenDelay);
+              lastTokenTime = currentTokenTime;
+            }
+
             metrics.tokens++;
           }
         }
@@ -203,6 +214,7 @@ class BenchmarkEngine {
       latencies: [],
       ttfts: [],
       tokenCounts: [],
+      allInterTokenDelays: [],
       errors: 0,
       timeouts: 0,
       resourceSnapshots: []
@@ -231,13 +243,18 @@ class BenchmarkEngine {
       const latency = metrics.endTime - metrics.startTime;
       
       results.iterations.push(metrics);
-      
+
       if (!metrics.error && !metrics.timeout) {
         results.latencies.push(latency);
         if (metrics.ttft !== null) {
           results.ttfts.push(metrics.ttft);
         }
         results.tokenCounts.push(metrics.tokens);
+
+        // Collect inter-token delays for TPOT calculation
+        if (metrics.interTokenDelays.length > 0) {
+          results.allInterTokenDelays.push(...metrics.interTokenDelays);
+        }
       }
 
       if (metrics.error) results.errors++;
@@ -260,6 +277,14 @@ class BenchmarkEngine {
     const totalTime = results.latencies.reduce((sum, t) => sum + t, 0) / 1000; // Convert to seconds
     const tps = totalTime > 0 ? totalTokens / totalTime : 0;
 
+    // Calculate TPOT (Time Per Output Token) - average inter-token delay in ms
+    const tpot = results.allInterTokenDelays.length > 0
+      ? results.allInterTokenDelays.reduce((sum, t) => sum + t, 0) / results.allInterTokenDelays.length
+      : null;
+
+    // Calculate GenTPS (Generation Tokens Per Second) - 1000/TPOT
+    const gen_tps = tpot > 0 ? 1000 / tpot : null;
+
     const avgCpu = results.resourceSnapshots
       .filter(r => r.after.cpu !== null)
       .reduce((sum, r) => sum + r.after.cpu, 0) / results.resourceSnapshots.length || null;
@@ -276,6 +301,8 @@ class BenchmarkEngine {
     const aggregated = {
       tps,
       ttft: sortedTtfts.length > 0 ? sortedTtfts[Math.floor(sortedTtfts.length / 2)] : null,
+      tpot,
+      gen_tps,
       latency_p50: this.calculatePercentile(sortedLatencies, 50),
       latency_p95: this.calculatePercentile(sortedLatencies, 95),
       latency_p99: this.calculatePercentile(sortedLatencies, 99),
@@ -351,10 +378,11 @@ class BenchmarkEngine {
           if (!modelInfo) {
             benchmarkLogger.warn('Model not loaded in cache, attempting to load', { modelId, alias: model.alias, model_id: model.model_id });
             try {
-              modelInfo = await orchestrator.loadModel(modelId, model.alias || model.model_id);
+              // Use model_id first (contains device-specific variant)
+              modelInfo = await orchestrator.loadModel(modelId, model.model_id || model.alias);
             } catch (err) {
               benchmarkLogger.error('Auto-load failed', { modelId, error: err.message });
-              storage.saveLog('benchmark', runId, 'error', `Auto-load failed for ${model.alias || model.model_id}: ${err.message}`);
+              storage.saveLog('benchmark', runId, 'error', `Auto-load failed for ${model.model_id || model.alias}: ${err.message}`);
               return null;
             }
           }
@@ -364,7 +392,8 @@ class BenchmarkEngine {
           if (!health.healthy) {
             benchmarkLogger.warn('Model unhealthy, retrying load', { modelId, alias: modelInfo.alias, health });
             try {
-              await orchestrator.loadModel(modelId, model.alias || model.model_id);
+              // Use model_id first (contains device-specific variant)
+              await orchestrator.loadModel(modelId, model.model_id || model.alias);
               health = await orchestrator.checkModelHealth(modelInfo.alias || model.alias || model.model_id);
             } catch (err) {
               benchmarkLogger.error('Reload failed', { modelId, error: err.message });

@@ -21,8 +21,10 @@ This directory contains example benchmark results to demonstrate the output form
 Each result record contains:
 - **model_id**: Identifier of the model tested
 - **scenario**: Name of the benchmark scenario
-- **tps**: Tokens per second (throughput)
+- **tps**: Tokens per second (overall throughput)
 - **ttft**: Time to first token in milliseconds (streaming only)
+- **tpot**: Time per output token - average inter-token delay in milliseconds (streaming only)
+- **gen_tps**: Generation tokens per second after first token (1000/TPOT, streaming only)
 - **latency_p50/p95/p99**: Latency percentiles in milliseconds
 - **error_rate**: Percentage of failed requests
 - **timeout_rate**: Percentage of timed-out requests
@@ -46,6 +48,12 @@ P95 and P99 show tail latency and are important for user experience consistency.
 
 ### Time to First Token (TTFT)
 Lower is better. Time until the first token is generated (streaming mode only). Important for perceived responsiveness.
+
+### Time Per Output Token (TPOT)
+Lower is better. Average time between consecutive tokens after the first token (streaming mode only). Indicates token generation consistency. Formula: average of all inter-token delays.
+
+### Generation TPS (GenTPS)
+Higher is better. Token generation rate after the first token (streaming mode only). Calculated as 1000/TPOT. Shows pure generation throughput excluding initial response time.
 
 ### Error Rate & Timeout Rate
 Lower is better. Indicates reliability:

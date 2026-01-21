@@ -102,6 +102,8 @@ class Storage {
         scenario TEXT NOT NULL,
         tps REAL,
         ttft REAL,
+        tpot REAL,
+        gen_tps REAL,
         latency_p50 REAL,
         latency_p95 REAL,
         latency_p99 REAL,
@@ -306,12 +308,12 @@ class Storage {
       this.saveJsonData();
     } else {
       const stmt = this.db.prepare(`
-        INSERT INTO benchmark_results 
-        (id, run_id, model_id, scenario, tps, ttft, latency_p50, latency_p95, latency_p99, 
+        INSERT INTO benchmark_results
+        (id, run_id, model_id, scenario, tps, ttft, tpot, gen_tps, latency_p50, latency_p95, latency_p99,
          error_rate, timeout_rate, cpu_avg, ram_avg, gpu_avg, raw_data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      
+
       stmt.run(
         result.id,
         result.run_id,
@@ -319,6 +321,8 @@ class Storage {
         result.scenario,
         result.tps || null,
         result.ttft || null,
+        result.tpot || null,
+        result.gen_tps || null,
         result.latency_p50 || null,
         result.latency_p95 || null,
         result.latency_p99 || null,
