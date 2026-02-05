@@ -21,7 +21,22 @@ app.use(express.json());
 
 // Request logging
 app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path}`, { ip: req.ip });
+  // Skip logging for frequently polled endpoints
+  const skipPaths = [
+    '/api/models',
+    '/api/benchmarks/runs',
+    '/api/models/loaded',
+    '/api/benchmarks/runs/'
+  ];
+
+  const shouldSkipLog = skipPaths.some(path =>
+    req.path === path || (path.endsWith('/') && req.path.startsWith(path))
+  );
+
+  if (!shouldSkipLog) {
+    logger.info(`${req.method} ${req.path}`, { ip: req.ip });
+  }
+
   next();
 });
 
@@ -429,24 +444,28 @@ app.get('/api/benchmarks/runs', async (req, res) => {
   try {
     const runs = storage.getAllBenchmarkRuns();
 
-    // Enrich runs with model aliases for better UX
+    // Enrich runs with model information for better UX
     const enrichedRuns = runs.map(run => {
       const modelAliases = [];
+      const modelDisplayNames = [];
       if (run.model_ids && Array.isArray(run.model_ids)) {
         run.model_ids.forEach(modelId => {
           const model = storage.getModel(modelId);
           if (model) {
             modelAliases.push(model.alias || model.model_id || modelId);
+            modelDisplayNames.push(model.model_id || model.alias || modelId); // Full model identifier
           } else {
             // If model was deleted, just show the ID
             modelAliases.push(modelId);
+            modelDisplayNames.push(modelId);
           }
         });
       }
 
       return {
         ...run,
-        model_aliases: modelAliases
+        model_aliases: modelAliases,
+        model_display_names: modelDisplayNames
       };
     });
 
@@ -472,13 +491,14 @@ app.get('/api/benchmarks/runs/:id', async (req, res) => {
     
     const results = storage.getBenchmarkResults(id);
     
-    // Enrich results with model alias
+    // Enrich results with model information
     const enrichedResults = results.map(result => {
       const model = storage.getModel(result.model_id);
       return {
         ...result,
         model_alias: model?.alias || result.model_id,
-        model_name: model?.alias || 'Unknown Model'
+        model_name: model?.model_id || model?.alias || 'Unknown Model', // Full model identifier
+        model_display_name: model?.model_id || model?.alias || result.model_id // For display purposes
       };
     });
     

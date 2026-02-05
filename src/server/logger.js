@@ -1,11 +1,17 @@
 import winston from 'winston';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const logDir = path.join(__dirname, '../../logs');
+
+// Ensure logs directory exists
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
 
 // Create logger instance
 const logger = winston.createLogger({
@@ -28,6 +34,29 @@ const logger = winston.createLogger({
           return `${timestamp} [${service}] ${level}: ${message} ${metaStr}`;
         })
       )
+    }),
+    // File output - combined logs
+    new winston.transports.File({
+      filename: path.join(logDir, 'combined.log'),
+      format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.json()
+      ),
+      maxsize: 10485760, // 10MB
+      maxFiles: 5,
+      tailable: true
+    }),
+    // File output - error logs only
+    new winston.transports.File({
+      filename: path.join(logDir, 'error.log'),
+      level: 'error',
+      format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.json()
+      ),
+      maxsize: 10485760, // 10MB
+      maxFiles: 5,
+      tailable: true
     })
   ]
 });
@@ -38,7 +67,31 @@ export const createServiceLogger = (serviceName) => {
 };
 
 export const createBenchmarkLogger = (benchmarkId) => {
-  return logger.child({ service: `benchmark-${benchmarkId}` });
+  const benchmarkLogger = logger.child({ service: `benchmark-${benchmarkId}` });
+
+  // Create benchmark-specific log file
+  const benchmarkLogDir = path.join(logDir, 'benchmarks');
+  if (!fs.existsSync(benchmarkLogDir)) {
+    fs.mkdirSync(benchmarkLogDir, { recursive: true });
+  }
+
+  const benchmarkLogFile = path.join(benchmarkLogDir, `${benchmarkId}.log`);
+  benchmarkLogger.add(new winston.transports.File({
+    filename: benchmarkLogFile,
+    format: winston.format.combine(
+      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+      winston.format.printf(({ timestamp, level, message, ...meta }) => {
+        const metaStr = Object.keys(meta).length && Object.keys(meta).some(k => k !== 'service')
+          ? ' ' + JSON.stringify(meta, null, 2)
+          : '';
+        return `${timestamp} [${level.toUpperCase()}]: ${message}${metaStr}`;
+      })
+    ),
+    maxsize: 10485760, // 10MB
+    maxFiles: 3
+  }));
+
+  return benchmarkLogger;
 };
 
 export default logger;

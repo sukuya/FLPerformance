@@ -111,13 +111,13 @@ function Results() {
   // Aggregate results by model for comparison
   const getModelAggregates = () => {
     const modelMap = {};
-    
+
     results.forEach(result => {
-      const modelKey = result.model_alias || result.model_id;
+      const modelKey = result.model_display_name || result.model_name || result.model_alias || result.model_id;
       if (!modelMap[modelKey]) {
         modelMap[modelKey] = {
           model_id: result.model_id,
-          model: modelKey,
+          model: modelKey, // Use full model identifier
           tps: [],
           ttft: [],
           tpot: [],
@@ -142,7 +142,7 @@ function Results() {
     });
 
     return Object.values(modelMap).map(m => ({
-      model: m.model, // Use alias instead of model_id
+      model: m.model, // Full model identifier
       avgTps: m.tps.length ? (m.tps.reduce((a, b) => a + b, 0) / m.tps.length).toFixed(2) : 0,
       avgTtft: m.ttft.length ? (m.ttft.reduce((a, b) => a + b, 0) / m.ttft.length).toFixed(2) : 0,
       avgTpot: m.tpot.length ? (m.tpot.reduce((a, b) => a + b, 0) / m.tpot.length).toFixed(2) : 0,
@@ -216,11 +216,13 @@ function Results() {
                   style={{ maxWidth: '600px' }}
                 >
                   {runs.map(run => {
-                    const modelList = run.model_aliases && run.model_aliases.length > 0
-                      ? run.model_aliases.join(', ')
-                      : 'Unknown models';
-                    const truncatedModels = modelList.length > 40
-                      ? modelList.substring(0, 40) + '...'
+                    const modelList = run.model_display_names && run.model_display_names.length > 0
+                      ? run.model_display_names.join(', ')
+                      : (run.model_aliases && run.model_aliases.length > 0
+                        ? run.model_aliases.join(', ')
+                        : 'Unknown models');
+                    const truncatedModels = modelList.length > 60
+                      ? modelList.substring(0, 60) + '...'
                       : modelList;
                     const dateStr = new Date(run.started_at).toLocaleString('en-US', {
                       month: 'short',
@@ -566,9 +568,9 @@ function Results() {
                   <tbody>
                     {results.map((result, idx) => (
                       <tr key={idx}>
-                        <td><strong>{result.model_alias || result.model_id}</strong></td>
+                        <td><strong>{result.model_display_name || result.model_name || result.model_alias || result.model_id}</strong></td>
                         <td>
-                          <span style={{ 
+                          <span style={{
                             display: 'inline-block',
                             padding: '2px 8px',
                             borderRadius: '4px',

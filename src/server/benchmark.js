@@ -115,7 +115,14 @@ class BenchmarkEngine {
       const modelName = modelInfo.id;
 
       // Log the model being used for debugging
-      logger.info('Running inference', { modelName, modelAlias: modelInfo.alias, scenario: scenario.name });
+      logger.info('Running inference', {
+        modelId: modelName,
+        modelAlias: modelInfo.alias,
+        scenario: scenario.name,
+        prompt: scenario.prompt
+      });
+
+      let generatedText = '';
 
       // Use streaming to measure TTFT if enabled
       if (config.streaming) {
@@ -130,6 +137,8 @@ class BenchmarkEngine {
         for await (const chunk of stream) {
           if (chunk.choices[0]?.delta?.content) {
             const currentTokenTime = Date.now();
+            const content = chunk.choices[0].delta.content;
+            generatedText += content;
 
             if (!firstTokenTime) {
               // First token: record TTFT
@@ -155,9 +164,20 @@ class BenchmarkEngine {
           temperature: config.temperature || 0.7
         }, { signal: controller.signal });
 
+        generatedText = response.choices[0]?.message?.content || '';
         metrics.tokens = response.usage?.completion_tokens || 0;
         metrics.ttft = null; // Can't measure TTFT without streaming
       }
+
+      // Log the generated output
+      logger.info('Inference completed', {
+        modelId: modelName,
+        modelAlias: modelInfo.alias,
+        scenario: scenario.name,
+        generatedText,
+        tokens: metrics.tokens,
+        latency: `${(Date.now() - startTime)}ms`
+      });
 
       clearTimeout(timeoutId);
       metrics.endTime = performance.now();
@@ -168,9 +188,8 @@ class BenchmarkEngine {
       
       // Log detailed error information
       logger.error('Inference failed', {
-        modelName,
-        modelAlias: modelInfo.alias,
         modelId: modelInfo.id,
+        modelAlias: modelInfo.alias,
         scenario: scenario.name,
         error: error.message,
         errorType: error.constructor.name,
@@ -222,6 +241,14 @@ class BenchmarkEngine {
 
     // Run iterations
     for (let i = 0; i < config.iterations; i++) {
+      benchmarkLogger.info('Starting iteration', {
+        scenario: scenario.name,
+        iteration: i + 1,
+        total: config.iterations,
+        modelId,
+        modelAlias: modelInfo.alias
+      });
+
       if (progressCallback) {
         progressCallback({
           modelId,
@@ -233,14 +260,45 @@ class BenchmarkEngine {
 
       // Collect resource metrics before inference
       const resourcesBefore = await this.collectResourceMetrics();
-      
+      benchmarkLogger.debug('Resources before inference', {
+        cpu: resourcesBefore.cpu?.toFixed(2),
+        ram: resourcesBefore.ram?.toFixed(2),
+        gpu: resourcesBefore.gpu?.toFixed(2)
+      });
+
       // Run inference with modelInfo
       const metrics = await this.runSingleInference(modelInfo, scenario, config);
-      
+
       // Collect resource metrics after inference
       const resourcesAfter = await this.collectResourceMetrics();
+      benchmarkLogger.debug('Resources after inference', {
+        cpu: resourcesAfter.cpu?.toFixed(2),
+        ram: resourcesAfter.ram?.toFixed(2),
+        gpu: resourcesAfter.gpu?.toFixed(2)
+      });
 
       const latency = metrics.endTime - metrics.startTime;
+
+      // Log iteration results
+      if (metrics.error) {
+        benchmarkLogger.warn('Iteration failed with error', {
+          iteration: i + 1,
+          error: metrics.error,
+          latency: latency.toFixed(2)
+        });
+      } else if (metrics.timeout) {
+        benchmarkLogger.warn('Iteration timed out', {
+          iteration: i + 1,
+          latency: latency.toFixed(2)
+        });
+      } else {
+        benchmarkLogger.info('Iteration completed', {
+          iteration: i + 1,
+          latency: latency.toFixed(2),
+          tokens: metrics.tokens,
+          ttft: metrics.ttft ? metrics.ttft.toFixed(2) : 'N/A'
+        });
+      }
       
       results.iterations.push(metrics);
 
@@ -316,10 +374,22 @@ class BenchmarkEngine {
       successful_iterations: config.iterations - results.errors - results.timeouts
     };
 
-    benchmarkLogger.info('Scenario completed', { 
+    benchmarkLogger.info('Scenario completed', {
       scenario: scenario.name,
       tps: aggregated.tps.toFixed(2),
-      p50: aggregated.latency_p50.toFixed(2)
+      ttft: aggregated.ttft ? aggregated.ttft.toFixed(2) : 'N/A',
+      tpot: aggregated.tpot ? aggregated.tpot.toFixed(2) : 'N/A',
+      gen_tps: aggregated.gen_tps ? aggregated.gen_tps.toFixed(2) : 'N/A',
+      p50: aggregated.latency_p50.toFixed(2),
+      p95: aggregated.latency_p95.toFixed(2),
+      p99: aggregated.latency_p99.toFixed(2),
+      error_rate: aggregated.error_rate.toFixed(2) + '%',
+      timeout_rate: aggregated.timeout_rate.toFixed(2) + '%',
+      successful_iterations: aggregated.successful_iterations,
+      total_iterations: aggregated.total_iterations,
+      cpu_avg: aggregated.cpu_avg ? aggregated.cpu_avg.toFixed(2) + '%' : 'N/A',
+      ram_avg: aggregated.ram_avg ? aggregated.ram_avg.toFixed(2) + '%' : 'N/A',
+      gpu_avg: aggregated.gpu_avg ? aggregated.gpu_avg.toFixed(2) + '%' : 'N/A'
     });
 
     return {
@@ -423,13 +493,18 @@ class BenchmarkEngine {
 
         // Run benchmarks for each model
         for (const modelId of modelIds) {
-          benchmarkLogger.info('Benchmarking model', { modelId });
+          const modelIndex = modelIds.indexOf(modelId) + 1;
+          benchmarkLogger.info('Benchmarking model', {
+            modelId,
+            modelNumber: modelIndex,
+            totalModels: modelIds.length
+          });
 
           // Get model from storage to get alias
           const model = storage.getModel(modelId);
           if (!model) {
             benchmarkLogger.error('Model not found in storage', { modelId });
-            storage.saveLog('benchmark', runId, 'error', 
+            storage.saveLog('benchmark', runId, 'error',
               `Model ${modelId} not found in storage`
             );
             continue;
@@ -449,10 +524,19 @@ class BenchmarkEngine {
 
           // Run each scenario in the suite
           for (const scenario of suite.scenarios) {
+            const scenarioIndex = suite.scenarios.indexOf(scenario) + 1;
+            benchmarkLogger.info('Starting scenario', {
+              scenario: scenario.name,
+              scenarioNumber: scenarioIndex,
+              totalScenarios: suite.scenarios.length,
+              modelId,
+              modelAlias: modelInfo.alias
+            });
+
             try {
               const result = await this.runScenario(
-                modelId, 
-                scenario, 
+                modelId,
+                scenario,
                 config,
                 progressCallback
               );
@@ -470,14 +554,19 @@ class BenchmarkEngine {
               storage.saveBenchmarkResult(resultRecord);
               allResults.push(resultRecord);
 
-            } catch (error) {
-              benchmarkLogger.error('Scenario failed', { 
-                modelId, 
+              benchmarkLogger.info('Scenario saved', {
                 scenario: scenario.name,
-                error: error.message 
+                resultId: resultRecord.id
               });
-              
-              storage.saveLog('benchmark', runId, 'error', 
+
+            } catch (error) {
+              benchmarkLogger.error('Scenario failed', {
+                modelId,
+                scenario: scenario.name,
+                error: error.message
+              });
+
+              storage.saveLog('benchmark', runId, 'error',
                 `Scenario ${scenario.name} failed for ${modelId}: ${error.message}`
               );
             } finally {
@@ -485,12 +574,21 @@ class BenchmarkEngine {
               updateProgress();
             }
           }
+
+          benchmarkLogger.info('Model benchmarking completed', {
+            modelId,
+            modelAlias: modelInfo.alias,
+            completedScenarios: suite.scenarios.length
+          });
         }
 
         // Update run as completed
+        const completedAt = Date.now();
+        const duration = completedAt - run.started_at;
+
         storage.updateBenchmarkRun(runId, {
           status: 'completed',
-          completed_at: Date.now()
+          completed_at: completedAt
         });
 
         this.runningBenchmarks.set(runId, {
@@ -499,7 +597,15 @@ class BenchmarkEngine {
           progress: 100
         });
 
-        benchmarkLogger.info('Benchmark run completed', { runId, resultsCount: allResults.length });
+        benchmarkLogger.info('Benchmark run completed', {
+          runId,
+          duration: `${(duration / 1000).toFixed(2)}s`,
+          totalModels: modelIds.length,
+          totalScenarios: suite.scenarios?.length || 0,
+          totalResults: allResults.length,
+          successfulResults: allResults.filter(r => r.error_rate < 100).length,
+          failedResults: allResults.filter(r => r.error_rate === 100).length
+        });
 
         return {
           runId,
