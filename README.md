@@ -1,30 +1,31 @@
-# FLPerformance - Foundry Local Model Benchmark Tool
+# FLPerformance: Foundry Local Model Benchmark Tool
 
-A local application with UI for benchmarking multiple Models (SLMs) running via **Microsoft Foundry Local**.
+A local application with a web UI for benchmarking multiple small language models (SLMs) running via **Microsoft Foundry Local**.
 
-📖 **[Read the full story: How we built FLPerformance](BLOGPOST.md)** - Learn about the architecture decisions, challenges faced, and how to get real-world LLM performance metrics on your local hardware.
+**[Read the full story: How we built FLPerformance](BLOGPOST.md)** to learn about the architecture decisions, challenges faced, and how to obtain real-world LLM performance metrics on your local hardware.
 
-## ✨ New: Easy Startup Script
+## Easy Startup Script
 
-**Windows users**: If you have Node.js installed, just run `.\START_APP.ps1` to start everything! Opens 2 terminals + browser automatically. 🚀
+**Windows users**: If you have Node.js installed, run `.\START_APP.ps1` to start everything. This opens two terminals and opens the browser automatically.
 
-### ✅ Working Features
+### Features
 - **Complete Benchmark System**: Full end-to-end benchmarking with accurate metrics
-- **Enhanced Visualizations**: Performance cards, comparison charts, and radar graphs
-- **Real-time Progress**: Polling-based status updates every 2 seconds during runs
+- **Enhanced Visualisations**: Performance cards, comparison charts, and radar graphs
+- **Non-blocking Model Loading**: Models download and load in the background with real-time status polling
+- **Real-time Progress**: Polling-based status updates every two seconds during runs
 - **Pre-test Validation**: Test button to verify model inference before benchmarking
 - **Results Export**: JSON and CSV export functionality
 - **Hardware Detection**: Comprehensive system information capture
 - **Storage System**: JSON-based storage with optional SQLite support
-- **Custom Cache Support**: Switch between model cache directories via Cache tab
+- **Custom Cache Support**: Switch between model cache directories via the Cache tab
 - **Multi-Model Comparison**: Side-by-side performance analysis with visual insights
 
 ## Overview
 
-FLPerformance Foundry Local Performance enables you to:
-- Manage Foundry Local service using the official JavaScript SDK
+FLPerformance enables you to:
+- Manage the Foundry Local service using the official JavaScript SDK
 - Load and benchmark multiple models simultaneously
-- Run standardized benchmark tests across models
+- Run standardised benchmark tests across models
 - Display clear performance statistics with tables and charts
 - Export results for analysis
 
@@ -37,8 +38,14 @@ FLPerformance Foundry Local Performance enables you to:
 ![Benchmark Configuration](docs/images/benchmarks-page.png)
 *Benchmarks page with suite selection, model selection, and configuration*
 
-![Results Visualization](docs/images/results.png)
+![Results Visualisation](docs/images/results.png)
 *Comprehensive results with performance scores, comparison charts, and detailed metrics*
+
+![Cache Management](docs/images/cache-page.png)
+*Cache management page for switching model directories and viewing cached models*
+
+![Settings](docs/images/settings-page.png)
+*Settings page with system information, API endpoint, and application details*
 
 ## Quick Start
 
@@ -110,33 +117,33 @@ npm run dev
 
 Once the server starts, open your browser:
 
-**🌐 http://localhost:3000**
+**http://localhost:3000**
 
-You'll see:
-- **Models** tab - Add and load AI models
-- **Benchmarks** tab - Run performance tests
-- **Results** tab - View comparison charts
-- **Cache** tab - Switch to custom model cache directories
+You will see:
+- **Models** tab: Add and load AI models
+- **Benchmarks** tab: Run performance tests
+- **Results** tab: View comparison charts
+- **Cache** tab: Switch to custom model cache directories
 
 ### First Time Setup (In the UI)
 
-1. Click **Models** → **Initialize Foundry Local** (one-time setup)
-2. Click **Add Model** → Select `phi-3-mini-4k-instruct`
-3. Click **Load Model** (downloads ~2GB, takes 2-5 minutes)
-4. Go to **Benchmarks** → Select your model → **Run Benchmark**
-5. View results in **Results** tab
+1. Click **Models**, then **Initialise Foundry Local** (one-time setup)
+2. Click **Add Model** and select `phi-3-mini-4k-instruct`
+3. Click **Load Model** (downloads roughly 2 GB; the model loads in the background while you see real-time status)
+4. Go to **Benchmarks**, select your model, and click **Run Benchmark**
+5. View results in the **Results** tab
 
 ### Custom Models (Optional)
-- Use **Cache** tab to switch Foundry cache directory
+- Use the **Cache** tab to switch the Foundry cache directory
 - Point to directories containing custom ONNX models
-- Custom models appear in Models dropdown with 🔧 badge
-- Benchmark custom models same as catalog models
+- Custom models appear in the Models dropdown with a wrench badge
+- Benchmark custom models in the same way as catalogue models
 
 ---
 
 ## Alternative: Manual Installation
 
-If the automated installation script doesn't work, follow these manual steps:
+If the automated installation script does not work, follow these manual steps:
 
 ### Required Software
 
@@ -201,24 +208,24 @@ The application will be available at:
 
 ---
 
-## Prerequisites (For Reference)
+## Using the Application
 
 1. Open the UI at http://localhost:3000
 2. Navigate to the **Models** tab
-3. Click **"Initialize Foundry Local"** to start the service
-4. Click **"Add Model"**
-5. Select a model from the available Foundry Local catalog (e.g., `phi-3-mini-4k-instruct`)
-6. Click **"Load Model"** to download (if needed) and load the model into memory
+3. Click **Initialise Foundry Local** to start the service
+4. Click **Add Model**
+5. Select a model from the available Foundry Local catalogue (for example, `phi-3-mini-4k-instruct`)
+6. Click **Load Model** to download (if needed) and load the model into memory
 
 **Note**: Foundry Local uses a single service instance that can load multiple models simultaneously. Models are differentiated by their model ID when making inference requests.
 
 ### 4. Run Your First Benchmark
 
 1. Navigate to the **Benchmarks** tab
-2. Select the **"default"** benchmark suite
+2. Select the **default** benchmark suite
 3. Choose one or more models to benchmark
-4. Configure settings (iterations, concurrency, etc.)
-5. Click **"Run Benchmark"**
+4. Configure settings (iterations, concurrency, and so on)
+5. Click **Run Benchmark**
 6. Watch live progress as tests execute
 
 ### Viewing Results
@@ -239,22 +246,25 @@ FLPerformance/
 │   │   ├── index.js         # Express server entry point
 │   │   ├── orchestrator.js  # Foundry Local service orchestration
 │   │   ├── benchmark.js     # Benchmark engine
+│   │   ├── cacheManager.js  # Model cache management (filesystem-based)
 │   │   ├── storage.js       # Results storage (JSON + SQLite)
 │   │   └── logger.js        # Structured logging
-│   └── client/              # Frontend UI (React/Vue)
-│       ├── public/
+│   └── client/              # Frontend UI (React + Vite)
 │       └── src/
-│           ├── components/  # UI components
 │           ├── pages/       # Page views
 │           └── utils/       # Client utilities
 ├── benchmarks/
 │   └── suites/
 │       └── default.json     # Default benchmark suite definition
 ├── docs/
-│   ├── ARCHITECTURE.md      # System architecture
-│   ├── API.md               # REST API reference
-│   ├── SETUP.md             # Setup documentation
-│   └── BENCHMARK_GUIDE.md   # Troubleshooting guide
+│   ├── architecture.md      # System architecture
+│   ├── api.md               # REST API reference
+│   ├── setup.md             # Setup documentation
+│   ├── BENCHMARK_GUIDE.md   # Troubleshooting guide
+│   ├── QUICK_REFERENCE.md   # Commands and code patterns cheat sheet
+│   ├── TESTING_CHECKLIST.md # Comprehensive test cases
+│   ├── VALIDATION_STEPS.md  # Validation procedures
+│   └── images/              # Screenshots and diagrams
 ├── scripts/
 │   └── helpers/            # Utility scripts
 ├── results/
@@ -280,12 +290,12 @@ FLPerformance/
 - **Percentile Metrics**: P50, P95, and P99 latency measurements for reliability analysis
 - **Performance Scoring**: 0-100 score based on throughput, latency, and reliability
 - **Stability**: Error rate and timeout tracking
-- **Resource Usage**: CPU, RAM, and GPU utilization (platform-dependent)
+- **Resource Usage**: CPU, RAM, and GPU utilisation (platform-dependent)
 
 ### Results & Comparison
 - **Performance Score Cards**: Visual 0-100 ratings for each model
 - **"Best Model For..." Cards**: Automatic recommendations for throughput, latency, reliability, and TTFT
-- **Side-by-side Comparison Table**: Detailed metrics with color-coded scores
+- **Side-by-side Comparison Table**: Detailed metrics with colour-coded scores
 - **Interactive Charts**: 
   - Throughput comparison (TPS)
   - Latency comparison (P50/P95/P99)
@@ -312,7 +322,7 @@ FLPerformance uses the official **foundry-local-sdk** JavaScript package to mana
 - **OpenAI-Compatible API**: Standard OpenAI client for inference requests
 - **Model Differentiation**: Models are identified by their model ID in API calls
 
-See [Architecture Documentation](docs/ARCHITECTURE.md) for details.
+See [Architecture Documentation](docs/architecture.md) for details.
 
 ## Troubleshooting
 
@@ -349,9 +359,9 @@ See [Architecture Documentation](docs/ARCHITECTURE.md) for details.
 For more detailed information, see:
 - [Quick Start Guide](QUICK_START.md) - Comprehensive getting started guide
 - [Quick Reference](docs/QUICK_REFERENCE.md) - Commands and code patterns cheat sheet
-- [Architecture Documentation](docs/ARCHITECTURE.md) - System design and SDK integration
-- [API Reference](docs/API.md) - REST API endpoint documentation
-- [Setup Guide](docs/SETUP.md) - Detailed installation and configuration
+- [Architecture Documentation](docs/architecture.md) - System design and SDK integration
+- [API Reference](docs/api.md) - REST API endpoint documentation
+- [Setup Guide](docs/setup.md) - Detailed installation and configuration
 - [Benchmark Guide](docs/BENCHMARK_GUIDE.md) - Troubleshooting and testing guide
 - [Testing Checklist](docs/TESTING_CHECKLIST.md) - Comprehensive test cases
 

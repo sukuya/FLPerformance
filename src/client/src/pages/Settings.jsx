@@ -11,7 +11,7 @@ function Settings() {
           <tbody>
             <tr>
               <td><strong>Application Version:</strong></td>
-              <td>1.0.0</td>
+              <td>2.0.0</td>
             </tr>
             <tr>
               <td><strong>API Endpoint:</strong></td>

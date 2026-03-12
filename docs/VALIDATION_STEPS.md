@@ -146,7 +146,7 @@ If Phase 4 passes successfully:
 - [x] Results generated for both models
 - [x] Results page displays correctly
 - [x] Model aliases shown properly (not internal IDs)
-- [x] Visualizations render correctly
+- [x] Visualisations render correctly
 - [x] NPU shows better performance than CPU
 - [x] Export functions work
 

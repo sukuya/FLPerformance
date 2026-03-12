@@ -207,7 +207,7 @@ You'll know everything is working when:
 1. ✅ Models load and show "running" status
 2. ✅ "Test" button returns actual responses
 3. ✅ Benchmarks complete without 100% errors
-4. ✅ Results page shows colorful charts and metrics
+4. ✅ Results page shows colourful charts and metrics
 5. ✅ Performance scores display (0-100 range)
 6. ✅ "Best Model For..." cards show model names
 

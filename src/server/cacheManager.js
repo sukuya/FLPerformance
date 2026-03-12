@@ -1,10 +1,34 @@
-import { execFile } from 'child_process';
-import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import logger from './logger.js';
 
-const execFilePromise = promisify(execFile);
+/**
+ * Foundry Local configuration file path.
+ * Located at ~/.foundry/foundry.config.json on all platforms.
+ */
+function getConfigPath() {
+  return path.join(os.homedir(), '.foundry', 'foundry.config.json');
+}
+
+/**
+ * Read the Foundry Local configuration file.
+ * @returns {object} Parsed configuration object
+ */
+function readFoundryConfig() {
+  const configPath = getConfigPath();
+  const raw = fs.readFileSync(configPath, 'utf8');
+  return JSON.parse(raw);
+}
+
+/**
+ * Write the Foundry Local configuration file.
+ * @param {object} config - Configuration object to write
+ */
+function writeFoundryConfig(config) {
+  const configPath = getConfigPath();
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+}
 
 class CacheManager {
   constructor() {
@@ -12,33 +36,25 @@ class CacheManager {
   }
 
   /**
-   * Get current cache directory location
+   * Get current cache directory location from foundry.config.json
    */
   async getCurrentLocation() {
     try {
-      logger.info('Getting current cache location');
-      const { stdout, stderr } = await execFilePromise('foundry', ['cache', 'location']);
+      logger.info('Getting current cache location from config');
+      const config = readFoundryConfig();
+      const location = config.serviceSettings?.cacheDirectoryPath;
 
-      if (stderr && !stderr.includes('Service is Started')) {
-        logger.warn('Cache location command stderr', { stderr });
+      if (!location) {
+        throw new Error('cacheDirectoryPath not found in foundry config');
       }
 
-      // Parse output: "💾 Cache directory path: /path/to/cache"
-      const match = stdout.match(/Cache directory path:\s*(.+)/);
-      if (match && match[1]) {
-        const location = match[1].trim();
-
-        // Store default cache path on first call
-        if (!this.defaultCachePath) {
-          this.defaultCachePath = location;
-          logger.info('Stored default cache path', { path: this.defaultCachePath });
-        }
-
-        return location;
+      // Store default cache path on first call
+      if (!this.defaultCachePath) {
+        this.defaultCachePath = location;
+        logger.info('Stored default cache path', { path: this.defaultCachePath });
       }
 
-      throw new Error('Could not parse cache location from output');
-
+      return location;
     } catch (error) {
       logger.error('Failed to get cache location', { error: error.message });
       throw new Error(`Failed to get cache location: ${error.message}`);
@@ -53,7 +69,7 @@ class CacheManager {
   }
 
   /**
-   * Validate cache path to prevent command injection and path traversal
+   * Validate cache path to prevent path traversal and access to sensitive directories
    */
   validateCachePath(cachePath) {
     if (typeof cachePath !== 'string') {
@@ -115,7 +131,7 @@ class CacheManager {
   }
 
   /**
-   * Switch to a different cache directory
+   * Switch to a different cache directory by updating foundry.config.json
    * @param {string} cachePath - Path to cache directory, or "default" to restore original
    */
   async switchCache(cachePath) {
@@ -124,8 +140,7 @@ class CacheManager {
 
       // Capture default cache path BEFORE switching (if not already captured)
       if (!this.defaultCachePath) {
-        const currentLocation = await this.getCurrentLocation();
-        // Don't call getCurrentLocation again - it's already captured
+        await this.getCurrentLocation();
       }
 
       // Handle "default" keyword
@@ -140,18 +155,15 @@ class CacheManager {
       const normalizedPath = this.validateCachePath(targetPath);
 
       logger.info('Switching cache directory', { targetPath, normalizedPath });
-      
-      // Use execFile with args array to prevent command injection
-      const { stderr } = await execFilePromise('foundry', ['cache', 'cd', normalizedPath]);
 
-      if (stderr && !stderr.includes('Service is Started')) {
-        logger.warn('Cache switch command stderr', { stderr });
-      }
+      // Update foundry.config.json with new cache path
+      const config = readFoundryConfig();
+      config.serviceSettings.cacheDirectoryPath = normalizedPath;
+      writeFoundryConfig(config);
 
-      // Get the new location WITHOUT updating defaultCachePath
-      const { stdout } = await execFilePromise('foundry', ['cache', 'location']);
-      const match = stdout.match(/Cache directory path:\s*(.+)/);
-      const newLocation = match && match[1] ? match[1].trim() : normalizedPath;
+      // Verify by re-reading the config
+      const updated = readFoundryConfig();
+      const newLocation = updated.serviceSettings?.cacheDirectoryPath || normalizedPath;
 
       logger.info('Cache directory switched', {
         requested: normalizedPath,
@@ -166,58 +178,84 @@ class CacheManager {
 
     } catch (error) {
       logger.error('Failed to switch cache', { cachePath, error: error.message });
-      
+
       // Mark validation errors with statusCode for proper HTTP response
-      if (error.message.includes('Cache path') || 
+      if (error.message.includes('Cache path') ||
           error.message.includes('system directories') ||
           error.message.includes('invalid characters')) {
         const validationError = new Error(error.message);
         validationError.statusCode = 400;
         throw validationError;
       }
-      
+
       throw new Error(`Failed to switch cache: ${error.message}`);
     }
   }
 
   /**
-   * List models in current cache
+   * List models in current cache by scanning the cache directory
+   * and cross-referencing with the model info catalogue.
    */
   async listCacheModels() {
     try {
       logger.info('Listing models in cache');
-      const { stdout, stderr } = await execFilePromise('foundry', ['cache', 'ls']);
 
-      if (stderr && !stderr.includes('Service is Started')) {
-        logger.warn('Cache list command stderr', { stderr });
+      const config = readFoundryConfig();
+      const cacheDir = config.serviceSettings?.cacheDirectoryPath;
+      if (!cacheDir) {
+        logger.warn('No cache directory configured');
+        return [];
       }
 
-      // Parse output:
-      // Models cached on device:
-      //    Alias                                             Model ID
-      // 💾 phi-3.5-mini                                      Phi-3.5-mini-instruct-generic-cpu:1
-      // 💾 rakuten-ai-7b-onnx                                rakuten-ai-7b-onnx
+      // Read the model info catalogue for ID-to-alias mapping
+      const modelInfoPath = path.join(cacheDir, 'foundry.modelinfo.json');
+      let modelInfoMap = new Map();
+      try {
+        const raw = fs.readFileSync(modelInfoPath, 'utf8');
+        const catalog = JSON.parse(raw);
+        if (catalog.models) {
+          for (const m of catalog.models) {
+            modelInfoMap.set(m.name, m.alias);
+          }
+        }
+      } catch {
+        logger.warn('Could not read model info catalogue; aliases will be derived from directory names');
+      }
 
+      // Scan publisher subdirectories in the cache (e.g. Microsoft/)
       const models = [];
-      const lines = stdout.split('\n');
+      let entries;
+      try {
+        entries = fs.readdirSync(cacheDir, { withFileTypes: true });
+      } catch {
+        logger.warn('Cannot read cache directory', { cacheDir });
+        return [];
+      }
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        // Skip non-model lines (no leading 💾) and empty lines
-        if (!trimmed.startsWith('💾')) continue;
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        // Skip non-publisher directories (foundry.modelinfo.json is a file, not a dir)
+        const publisherDir = path.join(cacheDir, entry.name);
+        let modelDirs;
+        try {
+          modelDirs = fs.readdirSync(publisherDir, { withFileTypes: true });
+        } catch {
+          continue;
+        }
 
-        // Parse model line: "💾 alias                    model_id"
-        const parts = trimmed.split(/\s{2,}/); // Split by 2+ spaces
-        if (parts.length >= 2) {
-          // Format after split: ["💾 alias", "model_id"]
-          // Remove emoji from first part
-          const aliasPart = parts[0].replace('💾', '').trim();
-          const id = parts[1].trim();
+        for (const modelEntry of modelDirs) {
+          if (!modelEntry.isDirectory()) continue;
+          // Directory names look like "qwen2.5-0.5b-instruct-generic-cpu-4"
+          // Model IDs look like "qwen2.5-0.5b-instruct-generic-cpu:4"
+          // Convert: replace the last "-N" (version) with ":N"
+          const dirName = modelEntry.name;
+          const modelId = dirName.replace(/-(\d+)$/, ':$1');
+          const alias = modelInfoMap.get(modelId) || dirName;
 
           models.push({
-            alias: aliasPart,
-            id,
-            description: aliasPart,
+            alias,
+            id: modelId,
+            description: alias,
             source: 'cache'
           });
         }
@@ -228,22 +266,22 @@ class CacheManager {
 
     } catch (error) {
       logger.error('Failed to list cache models', { error: error.message });
-      // Don't throw - return empty array as fallback
       logger.warn('Returning empty cache models list');
       return [];
     }
   }
 
   /**
-   * Check if foundry CLI is available
+   * Check if Foundry Local is available by verifying the config file exists
    */
-  async checkCLIAvailable() {
+  async checkFoundryAvailable() {
     try {
-      const command = process.platform === 'win32' ? 'where' : 'which';
-      await execFilePromise(command, ['foundry']);
+      const configPath = getConfigPath();
+      fs.accessSync(configPath, fs.constants.R_OK);
+      readFoundryConfig();
       return true;
     } catch (error) {
-      logger.error('Foundry CLI not found in PATH');
+      logger.error('Foundry Local config not found', { error: error.message });
       return false;
     }
   }

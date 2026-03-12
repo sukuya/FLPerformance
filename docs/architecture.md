@@ -7,15 +7,15 @@ FLPerformance is a full-stack application designed to benchmark multiple Large L
 ## 🎉 Current Status (January 2026)
 
 ### ✅ Successfully Implemented
-- **Enhanced Frontend**: Comprehensive visualizations with performance cards, charts, and radar graphs
+- **Enhanced Frontend**: Comprehensive visualisations with performance cards, charts, and radar graphs
 - **Backend Integration**: Fixed critical model loading bug (alias → model_id lookup)
 - **Benchmark System**: Fully functional with proper data structures and hardware detection
 - **Results Display**: Rich comparison tables, statistics cards, and recent runs tracking
 - **ARM64 Hardware Detection**: Proper Snapdragon X Elite system recognition
 
 ### ⚠️ Known Compatibility Issue
-- **Foundry Local ARM64**: Service initialization issues on Windows ARM64 systems
-- **Impact**: Visualizations and benchmark system work perfectly, but model inference is blocked
+- **Foundry Local ARM64**: Service initialisation issues on Windows ARM64 systems
+- **Impact**: Visualisations and benchmark system work perfectly, but model inference is blocked
 - **Workaround**: Consider alternative model serving or x64 systems for full functionality
 
 ## System Architecture
@@ -26,7 +26,7 @@ FLPerformance is a full-stack application designed to benchmark multiple Large L
 │  - Dashboard                                                  │
 │  - Models Management                                          │
 │  - Benchmarks Configuration                                   │
-│  - Results Visualization                                      │
+│  - Results Visualisation                                      │
 │  - Settings                                                   │
 └──────────────────┬───────────────────────────────────────────┘
                    │ HTTP/REST API
@@ -74,7 +74,7 @@ FLPerformance is a full-stack application designed to benchmark multiple Large L
 **Responsibilities:**
 - User interface for all application features
 - Real-time status updates
-- Interactive charts and data visualization
+- Interactive charts and data visualisation
 - Form handling and validation
 
 **Key Pages:**
@@ -87,7 +87,7 @@ FLPerformance is a full-stack application designed to benchmark multiple Large L
 **Technology Stack:**
 - React 18 for UI components
 - React Router for navigation
-- Recharts for data visualization
+- Recharts for data visualisation
 - Axios for API communication
 - Vite for development and build tooling
 
@@ -137,7 +137,7 @@ FLPerformance is a full-stack application designed to benchmark multiple Large L
 - Manage single service instance with multiple models
 - Maintain OpenAI-compatible client for the shared endpoint
 - Handle model loading/unloading on-demand
-- Perform health checks and service initialization
+- Perform health checks and service initialisation
 
 **Key Operations:**
 - `initialize()` - Set up FoundryLocalManager and start service
@@ -176,7 +176,7 @@ Fixed model lookup in API endpoints from `model.alias || model.model_id` to `mod
 - **Generation TPS (GenTPS):** Token generation rate = 1000/TPOT (streaming only)
 - **Latency:** P50/P95/P99 end-to-end completion time
 - **Stability:** Error rate, timeout rate
-- **Resources:** CPU, RAM, GPU utilization (best-effort)
+- **Resources:** CPU, RAM, GPU utilisation (best-effort)
 
 **Benchmark Flow:**
 1. Load benchmark suite definition
@@ -195,7 +195,7 @@ Fixed model lookup in API endpoints from `model.alias || model.model_id` to `mod
 - Uses `systeminformation` library
 - Captures CPU load percentage
 - Captures RAM usage percentage
-- Captures GPU utilization (if available)
+- Captures GPU utilisation (if available)
 - Cross-platform support with graceful degradation
 
 ### 5. Storage Layer
@@ -294,14 +294,14 @@ User → Frontend → GET /api/benchmarks/runs/:id
 **Foundry Local Version:** 0.8.117
 
 **Problem:**
-- FoundryLocalManager initializes successfully
+- FoundryLocalManager initialises successfully
 - Service endpoint is reported as available (http://127.0.0.1:58123/v1)
 - Models can be "loaded" without errors
 - However, the actual service doesn't accept HTTP connections
 - All inference requests fail with connection refused/timeout
 
 **Application Status:**
-- ✅ **Frontend Components**: All visualizations, charts, and UI work perfectly
+- ✅ **Frontend Components**: All visualisations, charts, and UI work perfectly
 - ✅ **Backend API**: All endpoints functional, data processing works
 - ✅ **Benchmark Engine**: Properly structured, ready for inference calls
 - ✅ **Storage**: JSON and SQLite storage both functional
@@ -410,7 +410,7 @@ npm start      # Start production server
 **Frontend:**
 - React 18.2
 - React Router 6.20
-- Recharts 2.10 (for enhanced visualizations)
+- Recharts 2.10 (for enhanced visualisations)
 - Axios 1.6
 - Vite 5.0
 
@@ -429,7 +429,7 @@ npm start      # Start production server
 - Express middleware for CORS
 
 **Recent Enhancements (January 2026):**
-- Enhanced Results.jsx with comprehensive visualizations
+- Enhanced Results.jsx with comprehensive visualisations
 - Performance score cards (0-100 scale)
 - Benchmark history with statistics
 - Improved error handling and logging
@@ -520,7 +520,7 @@ npm start      # Start production server
                 └──────┬──────┘
                        │
 ┌─────────────────────────────────────────────────────────────┐
-│ 4. Results Visualization                                     │
+│ 4. Results Visualisation                                     │
 └───────────────────────────┬─────────────────────────────────┘
                             │
                 ┌───────────▼──────────┐
@@ -534,7 +534,7 @@ npm start      # Start production server
 │ Performance    │                    │ Detailed       │
 │ Scores         │                    │ Metrics        │
 │ - 0-100 scale  │                    │ - TPS charts   │
-│ - Color coded  │                    │ - Latency      │
+│ - Colour coded  │                    │ - Latency      │
 └────────────────┘                    │ - Radar graph  │
                                       └────────────────┘
 ```
@@ -591,7 +591,7 @@ POST /api/models/:id/test
 
 1. **Add Models** → Load them → **Test them** ✨
 2. **Configure Benchmark** → Run it
-3. **View Results** → Analyze performance
+3. **View Results** → Analyse performance
 4. **Export Data** → JSON or CSV
 
 **Key Innovation**: Test button ensures models work before running full benchmarks!

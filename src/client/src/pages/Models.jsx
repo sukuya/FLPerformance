@@ -12,6 +12,8 @@ function Models() {
   const [selectedModel, setSelectedModel] = useState(null);
   const [logs, setLogs] = useState([]);
   const [newModel, setNewModel] = useState({ alias: '', model_id: '' });
+  const [loadingAvailable, setLoadingAvailable] = useState(false);
+  const [availableError, setAvailableError] = useState(null);
 
   // Memoize model filtering to avoid recalculation on every render
   const { catalogModels, customModels } = useMemo(() => {
@@ -21,6 +23,7 @@ function Models() {
   }, [availableModels]);
 
   useEffect(() => {
+    // Load configured models first (fast, local storage) then available models (slow, SDK calls)
     loadModels();
     loadAvailableModels();
     
@@ -40,16 +43,22 @@ function Models() {
     } catch (err) {
       setError(err.response?.data?.error || err.message);
     } finally {
+      // Unblock UI as soon as configured models are loaded
       setLoading(false);
     }
   };
 
   const loadAvailableModels = async () => {
     try {
+      setLoadingAvailable(true);
+      setAvailableError(null);
       const res = await modelsAPI.getAvailable();
       setAvailableModels(res.data.models);
     } catch (err) {
       console.error('Failed to load available models:', err);
+      setAvailableError('Could not fetch models from Foundry Local SDK. Check that the service is running.');
+    } finally {
+      setLoadingAvailable(false);
     }
   };
 
@@ -141,20 +150,82 @@ function Models() {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (model) => {
+    const status = model.status;
     const badgeClass = {
       running: 'badge-success',
       stopped: 'badge-warning',
       downloading: 'badge-info',
+      loading: 'badge-info',
       error: 'badge-danger'
     }[status] || 'badge-info';
     
-    const displayStatus = status === 'downloading' ? 'Downloading...' : status;
+    if (status === 'downloading') {
+      const progress = model.download_progress || 0;
+      return (
+        <div className="download-progress-wrapper">
+          <div className="download-progress-header">
+            <span className={`badge ${badgeClass}`}>
+              <span className="download-pulse-dot" />
+              Downloading
+            </span>
+            <span className="download-progress-pct">{Math.round(progress)}%</span>
+          </div>
+          <div className="progress-bar-container">
+            <div
+              className="progress-bar-fill progress-bar-striped"
+              style={{ width: `${Math.min(progress, 100)}%` }}
+            />
+          </div>
+        </div>
+      );
+    }
     
+    if (status === 'loading') {
+      return (
+        <div className="download-progress-wrapper">
+          <span className={`badge ${badgeClass}`}>
+            <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2, marginRight: 6, verticalAlign: 'middle' }} />
+            Loading...
+          </span>
+        </div>
+      );
+    }
+    
+    const displayStatus = status;
     return <span className={`badge ${badgeClass}`}>{displayStatus}</span>;
   };
 
-  if (loading) return <div className="loading">Loading models...</div>;
+  // Poll download progress for models that are downloading or loading
+  useEffect(() => {
+    const activeModels = models.filter(m => m.status === 'downloading' || m.status === 'loading');
+    if (activeModels.length === 0) return;
+
+    const interval = setInterval(async () => {
+      for (const model of activeModels) {
+        try {
+          const res = await modelsAPI.status(model.id);
+          const data = res.data;
+          if (data.status !== model.status || data.download_progress !== model.download_progress) {
+            loadModels();
+          }
+        } catch {
+          // ignore polling errors
+        }
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [models]);
+
+  if (loading) return (
+    <div className="loading-splash">
+      <div className="spinner" style={{ width: 48, height: 48, borderWidth: 5 }} />
+      <h3 style={{ marginTop: '1.5rem', color: '#2c3e50', fontWeight: 600 }}>Loading Models</h3>
+      <p style={{ marginTop: '0.5rem', color: '#7f8c8d', fontSize: '0.95rem' }}>
+        Fetching model catalogue from Foundry Local...
+      </p>
+    </div>
+  );
 
   return (
     <div>
@@ -193,24 +264,28 @@ function Models() {
                 <tr key={model.id}>
                   <td><strong>{model.alias}</strong></td>
                   <td><code>{model.model_id}</code></td>
-                  <td>{getStatusBadge(model.status)}</td>
+                  <td>{getStatusBadge(model)}</td>
                   <td>{model.endpoint || '-'}</td>
                   <td>
-                    {model.status === 'stopped' || model.status === 'error' ? (
+                    {(model.status === 'downloading' || model.status === 'loading') ? (
+                      <button 
+                        className="btn btn-info" 
+                        disabled
+                        title={model.status === 'downloading' 
+                          ? `Downloading... ${Math.round(model.download_progress || 0)}%` 
+                          : 'Model is loading...'}
+                      >
+                        {model.status === 'downloading' 
+                          ? `${Math.round(model.download_progress || 0)}%` 
+                          : 'Loading...'}
+                      </button>
+                    ) : model.status === 'stopped' || model.status === 'error' ? (
                       <button 
                         className="btn btn-success" 
                         onClick={() => handleStartService(model.id)}
                         title="Load model (auto-downloads if needed)"
                       >
                         Load Model
-                      </button>
-                    ) : model.status === 'downloading' ? (
-                      <button 
-                        className="btn btn-info" 
-                        disabled
-                        title="Model is downloading..."
-                      >
-                        Downloading...
                       </button>
                     ) : model.status === 'running' ? (
                       <>
@@ -270,45 +345,59 @@ function Models() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Model ID</label>
-                <select
-                  className="form-control"
-                  value={newModel.model_id}
-                  onChange={(e) => {
-                    const selected = availableModels.find(m => m.id === e.target.value);
-                    setNewModel({
-                      alias: selected?.alias || e.target.value,
-                      model_id: e.target.value
-                    });
-                  }}
-                  required
-                >
-                  <option value="">Select a model...</option>
+                <label className="form-label">Model ID (from Foundry Local catalogue)</label>
+                {loadingAvailable && availableModels.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0' }}>
+                    <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }}></div>
+                    <span style={{ color: '#7f8c8d', fontSize: '0.9rem' }}>Loading models from Foundry Local SDK...</span>
+                  </div>
+                ) : availableError && availableModels.length === 0 ? (
+                  <div style={{ padding: '0.5rem 0' }}>
+                    <p style={{ color: '#e74c3c', fontSize: '0.9rem', marginBottom: '0.5rem' }}>{availableError}</p>
+                    <button type="button" className="btn btn-secondary" onClick={loadAvailableModels}>
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    className="form-control"
+                    value={newModel.model_id}
+                    onChange={(e) => {
+                      const selected = availableModels.find(m => m.id === e.target.value);
+                      setNewModel({
+                        alias: selected?.alias || e.target.value,
+                        model_id: e.target.value
+                      });
+                    }}
+                    required
+                  >
+                    <option value="">Select a model...</option>
 
-                  {/* Catalog Models */}
-                  {catalogModels.length > 0 && (
-                    <optgroup label="Catalog Models">
-                      {catalogModels.map(m => (
-                        <option key={m.id} value={m.id}>
-                          {m.description || m.id}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
+                    {/* Catalog Models */}
+                    {catalogModels.length > 0 && (
+                      <optgroup label="Foundry Local Catalogue">
+                        {catalogModels.map(m => (
+                          <option key={m.id} value={m.id}>
+                            {m.alias} ({m.deviceType || 'CPU'}){m.fileSizeMb ? ` - ${m.fileSizeMb >= 1024 ? (m.fileSizeMb / 1024).toFixed(1) + ' GB' : m.fileSizeMb + ' MB'}` : ''}{m.isCached ? ' [cached]' : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
 
-                  {/* Custom Models */}
-                  {customModels.length > 0 && (
-                    <optgroup label="🔧 Custom Models">
-                      {customModels.map(m => (
-                        <option key={m.id} value={m.id}>
-                          {m.description || m.id}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
+                    {/* Custom Models */}
+                    {customModels.length > 0 && (
+                      <optgroup label="Custom Models (cache)">
+                        {customModels.map(m => (
+                          <option key={m.id} value={m.id}>
+                            {m.description || m.id}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                )}
                 <small style={{ color: '#7f8c8d', marginTop: '0.25rem', display: 'block' }}>
-                  Custom models from cache directory are marked with 🔧. Visit the Cache tab to manage.
+                  Models are fetched from Foundry Local SDK. Custom models from the cache directory appear separately.
                 </small>
               </div>
               <div style={{ marginTop: '1.5rem' }}>

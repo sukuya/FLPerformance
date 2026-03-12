@@ -79,7 +79,7 @@ This checklist helps verify the SDK integration is working correctly after migra
   Expected output:
   ```
   [INFO] Server starting...
-  [INFO] Foundry Local service initialized
+  [INFO] Foundry Local service initialised
   [INFO] Service endpoint: http://127.0.0.1:8080
   [INFO] Backend server listening on port 3001
   [INFO] Frontend dev server listening on port 3000
@@ -95,26 +95,26 @@ This checklist helps verify the SDK integration is working correctly after migra
   - Open browser: http://localhost:3000
   - Expected: FLPerformance UI loads
 
-## Service Initialization Tests
+## Service Initialisation Tests
 
-### Test 1: Initialize Foundry Local Service
+### Test 1: Initialise Foundry Local Service
 
 - [ ] **API Test**
   ```bash
-  curl -X POST http://localhost:3001/api/models/initialize/start
+  curl -X POST http://localhost:3001/api/models/initialise/start
   ```
   Expected:
   ```json
   {
     "success": true,
     "endpoint": "http://127.0.0.1:8080",
-    "status": "Service initialized"
+    "status": "Service initialised"
   }
   ```
 
 - [ ] **UI Test**
   - Navigate to Models tab
-  - Click "Initialize Foundry Local"
+  - Click "Initialise Foundry Local"
   - Expected: Success message, service shows as "Running"
 
 ### Test 2: Verify Service Health
@@ -126,7 +126,7 @@ This checklist helps verify the SDK integration is working correctly after migra
   Expected:
   ```json
   {
-    "initialized": true,
+    "initialised": true,
     "endpoint": "http://127.0.0.1:8080",
     "loadedModels": []
   }
@@ -317,12 +317,12 @@ This checklist helps verify the SDK integration is working correctly after migra
   ```
   Expected: Error response with message
 
-### Test 13: Service Not Initialized
+### Test 13: Service Not Initialised
 
 - [ ] **Load Model Before Init**
   - Restart server
-  - Try to load model without initializing
-  - Expected: Error "Service not initialized"
+  - Try to load model without initialising
+  - Expected: Error "Service not initialised"
 
 ### Test 14: Inference on Unloaded Model
 
@@ -369,7 +369,7 @@ This checklist helps verify the SDK integration is working correctly after migra
 
 - [ ] **End-to-End Test**
   1. Start server
-  2. Initialize service
+  2. Initialise service
   3. Load 2 models
   4. Run benchmark on both
   5. View and export results
@@ -423,7 +423,7 @@ This checklist helps verify the SDK integration is working correctly after migra
   - Verify "Manage Models", "Run Benchmark", "View Results" buttons work
   - Expected: Navigate to correct tabs
 
-### Test 23: Results Visualization
+### Test 23: Results Visualisation
 
 - [ ] **Performance Score Cards**
   - Complete a benchmark with 2+ models

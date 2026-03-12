@@ -8,19 +8,21 @@ function Dashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadDashboardData();
-    const interval = setInterval(loadDashboardData, 10000); // Refresh every 10s
+    // Load stats first (fast, local storage) to unblock the UI quickly
+    loadStats();
+    // Load health separately (slow, network call to Foundry Local)
+    loadHealth();
+    const interval = setInterval(() => {
+      loadStats();
+      loadHealth();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadStats = async () => {
     try {
-      const [statsRes, healthRes] = await Promise.all([
-        systemAPI.stats(),
-        systemAPI.health()
-      ]);
-      setStats(statsRes.data);
-      setSystemHealth(healthRes.data);
+      const res = await systemAPI.stats();
+      setStats(res.data);
       setError(null);
     } catch (err) {
       setError(err.response?.data?.error || err.message);
@@ -29,7 +31,25 @@ function Dashboard() {
     }
   };
 
-  if (loading) return <div className="loading">Loading dashboard...</div>;
+  const loadHealth = async () => {
+    try {
+      const res = await systemAPI.health();
+      setSystemHealth(res.data);
+    } catch (err) {
+      // Health check failure is non-critical; show dashboard anyway
+      setSystemHealth({ status: 'unavailable', error: err.message });
+    }
+  };
+
+  if (loading) return (
+    <div className="loading-splash">
+      <div className="spinner" style={{ width: 48, height: 48, borderWidth: 5 }} />
+      <h3 style={{ marginTop: '1.5rem', color: '#2c3e50', fontWeight: 600 }}>Loading Dashboard</h3>
+      <p style={{ marginTop: '0.5rem', color: '#7f8c8d', fontSize: '0.95rem' }}>
+        Connecting to Foundry Local service...
+      </p>
+    </div>
+  );
   if (error) return <div className="error">Error: {error}</div>;
 
   return (
@@ -91,9 +111,18 @@ function Dashboard() {
               <tr>
                 <td><strong>Status:</strong></td>
                 <td>
-                  <span className={`badge badge-${stats.lastRun.status === 'completed' ? 'success' : 'warning'}`}>
-                    {stats.lastRun.status}
-                  </span>
+                  {stats.lastRun.status === 'running' ? (
+                    <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                      Running
+                    </span>
+                  ) : (
+                    <span className={`badge badge-${stats.lastRun.status === 'completed' ? 'success' : stats.lastRun.status === 'failed' ? 'danger' : 'warning'}`}>
+                      {stats.lastRun.status === 'completed' && '\u2705 '}
+                      {stats.lastRun.status === 'failed' && '\u274C '}
+                      {stats.lastRun.status}
+                    </span>
+                  )}
                 </td>
               </tr>
               <tr>

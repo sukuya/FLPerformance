@@ -55,11 +55,11 @@ Differentiated by Model ID in API Calls
 
 ## Model Management Workflow
 
-### 1. Initialize Service (Once)
+### 1. Initialise Service (Once)
 ```bash
-POST /api/models/initialize/start
+POST /api/models/initialise/start
 ```
-**UI**: Models Tab → "Initialize Foundry Local"
+**UI**: Models Tab → "Initialise Foundry Local"
 
 ### 2. Load Model
 ```bash
@@ -164,8 +164,8 @@ const client2 = new OpenAI({ baseURL: 'http://localhost:8081' });
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/health` | GET | Server health check |
-| `/api/models/initialize/start` | POST | Initialize Foundry Local service |
-| `/api/models/status` | GET | Service initialization status |
+| `/api/models/initialise/start` | POST | Initialise Foundry Local service |
+| `/api/models/status` | GET | Service initialisation status |
 | `/api/models/loaded` | GET | List all loaded models |
 | `/api/models/:id/load` | POST | Load specific model |
 | `/api/models/:id/stop` | POST | Unload specific model |
@@ -287,7 +287,7 @@ See [TESTING_CHECKLIST.md](TESTING_CHECKLIST.md) for 23 comprehensive tests
 - Model ID is required in OpenAI API calls
 
 ### 3. Service Lifecycle
-1. Initialize service (once)
+1. Initialise service (once)
 2. Load models (as needed)
 3. Run inference (multiple times)
 4. Unload models (optional)
@@ -316,9 +316,9 @@ cd src/client && npm install && cd ../..
 npm run dev
 ```
 
-### Initialize Service
+### Initialise Service
 ```bash
-curl -X POST http://localhost:3001/api/models/initialize/start
+curl -X POST http://localhost:3001/api/models/initialise/start
 ```
 
 ### Load Model

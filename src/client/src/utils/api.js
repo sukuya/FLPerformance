@@ -4,6 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -11,13 +12,14 @@ const api = axios.create({
 
 // Models API
 export const modelsAPI = {
-  getAvailable: () => api.get('/models/available'),
+  getAvailable: () => api.get('/models/available', { timeout: 45000 }),
   getAll: () => api.get('/models'),
   add: (model) => api.post('/models', model),
   delete: (id) => api.delete(`/models/${id}`),
   start: (id) => api.post(`/models/${id}/start`),
   stop: (id) => api.post(`/models/${id}/stop`),
   load: (id) => api.post(`/models/${id}/load`),
+  status: (id) => api.get(`/models/${id}/status`),
   test: (id, data) => api.post(`/models/${id}/test`, data),
   health: (id) => api.get(`/models/${id}/health`),
   logs: (id, limit = 100) => api.get(`/models/${id}/logs`, { params: { limit } })

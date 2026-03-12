@@ -104,7 +104,7 @@ You should see the FLPerformance dashboard!
 
 1. **Click "Models"** in the sidebar
 
-2. **Click "Initialize Foundry Local"**
+2. **Click "Initialise Foundry Local"**
    - One-time setup
    - Takes ~5 seconds
    - Green checkmark when done

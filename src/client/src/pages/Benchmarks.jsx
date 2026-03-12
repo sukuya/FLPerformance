@@ -212,15 +212,21 @@ function Benchmarks() {
       {success && <div className="success">{success}</div>}
 
       {currentRunId && runStatus === 'running' && (
-        <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className="card benchmark-running-card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div className="spinner" aria-label="Benchmark running" />
           <div style={{ flex: 1 }}>
-            <h4 style={{ marginBottom: '0.5rem' }}>Benchmark running...</h4>
+            <h4 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="download-pulse-dot" style={{ background: '#3498db' }} />
+              Benchmark running...
+            </h4>
             <p style={{ marginBottom: '0.5rem', color: '#7f8c8d' }}>Run ID: <code>{currentRunId}</code></p>
-            <div className="progress-bar-container">
-              <div className="progress-bar-fill" style={{ width: `${runProgress || 5}%` }} />
+            <div className="progress-bar-container" style={{ height: '14px' }}>
+              <div className="progress-bar-fill progress-bar-striped" style={{ width: `${runProgress || 5}%` }} />
             </div>
-            <p style={{ marginTop: '0.5rem', color: '#3498db', fontWeight: 'bold' }}>{runProgress || 0}% completed</p>
+            <p style={{ marginTop: '0.5rem', fontWeight: 'bold', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ color: '#3498db', fontSize: '1.1rem' }}>{runProgress || 0}%</span>
+              <span style={{ color: '#7f8c8d', marginLeft: '0.5rem', fontSize: '0.85rem' }}>completed</span>
+            </p>
           </div>
         </div>
       )}
@@ -311,11 +317,18 @@ function Benchmarks() {
                           fontWeight: 'bold',
                           background: isRunning ? '#fff3cd' : isCompleted ? '#d4edda' : '#f8d7da',
                           color: isRunning ? '#856404' : isCompleted ? '#155724' : '#721c24',
-                          display: 'inline-block'
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
                         }}>
-                          {isRunning && '🔄 Running'}
-                          {isCompleted && '✅ Completed'}
-                          {isFailed && '❌ Failed'}
+                          {isRunning && (
+                            <>
+                              <span className="spinner" style={{ width: 10, height: 10, borderWidth: 2, borderTopColor: '#856404' }} />
+                              Running
+                            </>
+                          )}
+                          {isCompleted && '\u2705 Completed'}
+                          {isFailed && '\u274C Failed'}
                           {!isRunning && !isCompleted && !isFailed && run.status}
                         </span>
                       </td>

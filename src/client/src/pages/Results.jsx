@@ -177,7 +177,15 @@ function Results() {
   // Colors for charts
   const COLORS = ['#3498db', '#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22'];
 
-  if (loading) return <div className="loading">Loading results...</div>;
+  if (loading) return (
+    <div className="loading-splash">
+      <div className="spinner" style={{ width: 48, height: 48, borderWidth: 5 }} />
+      <h3 style={{ marginTop: '1.5rem', color: '#2c3e50', fontWeight: 600 }}>Loading Results</h3>
+      <p style={{ marginTop: '0.5rem', color: '#7f8c8d', fontSize: '0.95rem' }}>
+        Retrieving benchmark results...
+      </p>
+    </div>
+  );
 
   return (
     <div>
@@ -186,15 +194,21 @@ function Results() {
       {error && <div className="error">{error}</div>}
 
       {runStatus === 'running' && (
-        <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className="card benchmark-running-card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div className="spinner" aria-label="Benchmark running" />
           <div style={{ flex: 1 }}>
-            <h4 style={{ marginBottom: '0.5rem' }}>Benchmark running...</h4>
+            <h4 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="download-pulse-dot" style={{ background: '#3498db' }} />
+              Benchmark running...
+            </h4>
             <p style={{ marginBottom: '0.5rem', color: '#7f8c8d' }}>Run ID: <code>{selectedRun}</code></p>
-            <div className="progress-bar-container">
-              <div className="progress-bar-fill" style={{ width: `${runProgress || 5}%` }} />
+            <div className="progress-bar-container" style={{ height: '14px' }}>
+              <div className="progress-bar-fill progress-bar-striped" style={{ width: `${runProgress || 5}%` }} />
             </div>
-            <p style={{ marginTop: '0.5rem', color: '#3498db', fontWeight: 'bold' }}>{runProgress || 0}% completed</p>
+            <p style={{ marginTop: '0.5rem', fontWeight: 'bold', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ color: '#3498db', fontSize: '1.1rem' }}>{runProgress || 0}%</span>
+              <span style={{ color: '#7f8c8d', marginLeft: '0.5rem', fontSize: '0.85rem' }}>completed</span>
+            </p>
           </div>
         </div>
       )}

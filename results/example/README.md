@@ -28,7 +28,7 @@ Each result record contains:
 - **latency_p50/p95/p99**: Latency percentiles in milliseconds
 - **error_rate**: Percentage of failed requests
 - **timeout_rate**: Percentage of timed-out requests
-- **cpu_avg/ram_avg/gpu_avg**: Average resource utilization percentages
+- **cpu_avg/ram_avg/gpu_avg**: Average resource utilisation percentages
 - **total_tokens**: Total tokens generated across all iterations
 - **total_iterations**: Number of iterations run
 - **successful_iterations**: Number of successful iterations
@@ -60,13 +60,13 @@ Lower is better. Indicates reliability:
 - **Error rate**: Percentage of requests that failed with errors
 - **Timeout rate**: Percentage of requests that exceeded the timeout limit
 
-### Resource Utilization
+### Resource Utilisation
 Context-dependent. Shows:
-- **CPU**: Processor utilization percentage
+- **CPU**: Processor utilisation percentage
 - **RAM**: Memory usage percentage
-- **GPU**: Graphics processor utilization percentage (if available)
+- **GPU**: Graphics processor utilisation percentage (if available)
 
-Higher utilization may indicate heavier computational requirements.
+Higher utilisation may indicate heavier computational requirements.
 
 ## Example Interpretation
 

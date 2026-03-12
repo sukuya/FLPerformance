@@ -120,7 +120,7 @@ app.delete('/api/models/:id', async (req, res) => {
     if (loadedModelInfo) {
       logger.info('Unloading model before deletion', { id, alias: model.alias });
       try {
-        await orchestrator.unloadModel(id, model.model_id || model.alias);
+        await orchestrator.unloadModel(id, model.alias);
       } catch (err) {
         logger.warn('Failed to unload model, continuing with deletion', { id, error: err.message });
       }
@@ -139,6 +139,7 @@ app.delete('/api/models/:id', async (req, res) => {
 /**
  * POST /api/models/:id/start
  * Load model into Foundry Local service (downloads and loads)
+ * Non-blocking: returns immediately and loads in background
  */
 app.post('/api/models/:id/start', async (req, res) => {
   try {
@@ -149,24 +150,61 @@ app.post('/api/models/:id/start', async (req, res) => {
       return res.status(404).json({ error: 'Model not found' });
     }
 
-    // Load model (will initialize service if needed)
-    // Use model_id first (contains device-specific variant like "...-cpu:1")
-    const modelInfo = await orchestrator.loadModel(id, model.model_id || model.alias);
-    
-    logger.info('Model loaded', { id, modelInfo });
-    
+    // Update status to loading immediately
+    storage.saveModel({ ...model, status: 'loading', updated_at: Date.now() });
+
+    // Return immediately - load in background
     res.json({ 
       success: true,
-      modelInfo: {
-        id: modelInfo.id,
-        alias: modelInfo.alias,
-        deviceType: modelInfo.deviceType,
-        executionProvider: modelInfo.executionProvider
-      },
-      endpoint: orchestrator.manager.endpoint
+      message: 'Model loading started. Poll /api/models/:id/status for progress.'
+    });
+
+    // Background loading
+    orchestrator.loadModel(id, model.alias)
+      .then((modelInfo) => {
+        logger.info('Model loaded (background)', { id, alias: modelInfo.alias });
+      })
+      .catch((error) => {
+        logger.error('Background model load failed', { id, error: error.message });
+        const m = storage.getModel(id);
+        if (m) {
+          storage.saveModel({ ...m, status: 'error', last_error: error.message, updated_at: Date.now() });
+        }
+      });
+  } catch (error) {
+    logger.error('Failed to start model load', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/models/:id/status
+ * Get model download/load status (includes live download progress)
+ */
+app.get('/api/models/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const model = storage.getModel(id);
+    
+    if (!model) {
+      return res.status(404).json({ error: 'Model not found' });
+    }
+
+    // Include live download progress from orchestrator
+    const downloadProgress = orchestrator.getDownloadProgress(model.alias || model.model_id);
+    
+    res.json({
+      id: model.id,
+      alias: model.alias,
+      status: model.status,
+      download_progress: downloadProgress?.progress ?? null,
+      download_status: downloadProgress?.status ?? null,
+      last_error: model.last_error || downloadProgress?.error || null,
+      endpoint: model.endpoint || null,
+      updated_at: model.updated_at
     });
   } catch (error) {
-    logger.error('Failed to load model', { error: error.message });
+    logger.error('Failed to get model status', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -184,8 +222,7 @@ app.post('/api/models/:id/stop', async (req, res) => {
       return res.status(404).json({ error: 'Model not found' });
     }
     
-    // Use model_id first (contains device-specific variant)
-    await orchestrator.unloadModel(id, model.model_id || model.alias);
+    await orchestrator.unloadModel(id, model.alias);
     logger.info('Model unloaded', { id });
     
     res.json({ success: true });
@@ -207,22 +244,28 @@ app.post('/api/models/:id/load', async (req, res) => {
     if (!model) {
       return res.status(404).json({ error: 'Model not found' });
     }
+
+    // Update status to loading immediately
+    storage.saveModel({ ...model, status: 'loading', updated_at: Date.now() });
     
-    // Load model using SDK (downloads if needed)
-    const modelInfo = await orchestrator.loadModel(id, model.model_id || model.alias);
-    
-    logger.info('Model loaded', { id, modelInfo });
-    
+    // Return immediately - load in background
     res.json({ 
       success: true,
-      modelInfo: {
-        id: modelInfo.id,
-        alias: modelInfo.alias,
-        deviceType: modelInfo.deviceType,
-        executionProvider: modelInfo.executionProvider
-      },
-      endpoint: orchestrator.manager.endpoint
+      message: 'Model loading started. Poll /api/models/:id/status for progress.'
     });
+
+    // Background loading
+    orchestrator.loadModel(id, model.alias)
+      .then((modelInfo) => {
+        logger.info('Model loaded (background)', { id, alias: modelInfo.alias });
+      })
+      .catch((error) => {
+        logger.error('Background model load failed', { id, error: error.message });
+        const m = storage.getModel(id);
+        if (m) {
+          storage.saveModel({ ...m, status: 'error', last_error: error.message, updated_at: Date.now() });
+        }
+      });
   } catch (error) {
     logger.error('Failed to load model', { error: error.message });
     res.status(500).json({ error: error.message });
@@ -381,8 +424,17 @@ app.post('/api/benchmarks/run', async (req, res) => {
       return res.status(400).json({ error: 'suiteName is required' });
     }
 
+    // Validate suite name to prevent path traversal
+    if (!/^[a-zA-Z0-9_-]+$/.test(suiteName)) {
+      return res.status(400).json({ error: 'Invalid suite name' });
+    }
+
     // Load suite
-    const suitePath = path.join(__dirname, '../../benchmarks/suites', `${suiteName}.json`);
+    const suitesDir = path.resolve(__dirname, '../../benchmarks/suites');
+    const suitePath = path.join(suitesDir, `${suiteName}.json`);
+    if (!path.resolve(suitePath).startsWith(suitesDir)) {
+      return res.status(400).json({ error: 'Invalid suite name' });
+    }
     if (!fs.existsSync(suitePath)) {
       return res.status(404).json({ error: 'Suite not found' });
     }

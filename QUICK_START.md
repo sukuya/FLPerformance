@@ -93,7 +93,7 @@ For quick testing, select just **1 scenario**:
 
 **Charts:**
 - Bar charts showing TPS and latency values
-- Performance comparison visualizations
+- Performance comparison visualisations
 - Model name displayed correctly throughout
 
 ---
@@ -103,13 +103,13 @@ For quick testing, select just **1 scenario**:
 If you see:
 - **TPS = 0**: All iterations failed
 - **Error Rate = 100%**: Model not responding or timeout too low
-- **No data in charts**: Benchmark didn't complete or had errors
+- **No data in charts**: Benchmark did not complete or had errors
 
 **Solutions:**
-1. **Run model test first**: Click "Test" button in Models tab
-2. **Check backend logs**: Look for error messages in terminal
-3. **Verify model loaded**: Status should be "running" not "stopped"
-4. **Increase timeout**: Set to 60000ms if seeing timeouts
+1. **Run model test first**: Click the "Test" button in the Models tab
+2. **Check backend logs**: Look for error messages in the terminal
+3. **Verify model is loaded**: Status should be "running", not "stopped"
+4. **Increase timeout**: Set to 60000 ms if seeing timeouts
 5. **Restart backend**: Stop and restart `npm run server`
 
 ---
@@ -148,11 +148,11 @@ If you see:
 **Symptoms:** Benchmark completes but shows 0% success
 
 **Fix:**
-1. **Test the model first**: Click "Test" button in Models tab
-2. If test fails, model isn't responding correctly
-3. Check model is actually loaded (status = "running")
-4. Restart backend: Stop server and run `npm run server`
-5. Try loading model again
+1. **Test the model first**: Click the "Test" button in the Models tab
+2. If the test fails, the model is not responding correctly
+3. Check the model is actually loaded (status = "running")
+4. Restart backend: stop the server and run `npm run server`
+5. Try loading the model again
 
 ### Issue: Timeout errors
 
@@ -170,20 +170,20 @@ If you see:
 
 **Fix:**
 1. Model may not be fully loaded
-2. Wait 30 seconds and try test again
+2. Wait 30 seconds and try the test again
 3. Check backend logs for errors
 4. Try unloading and reloading the model
-5. Verify Foundry Local service is responding
+5. Verify the Foundry Local service is responding
 
 ### Issue: Results show model IDs instead of names
 
 **Symptoms:** See "model_1768..." everywhere
 
 **Fix:**
-1. This is OLD behavior - has been fixed
-2. Restart backend server
-3. Hard refresh browser: `Ctrl+Shift+R`
-4. Should now show model alias correctly
+1. This is old behaviour and has been fixed
+2. Restart the backend server
+3. Hard-refresh the browser: `Ctrl+Shift+R`
+4. Model alias should now display correctly
 
 ---
 
@@ -229,7 +229,7 @@ Your benchmark is **successful** when:
 ✅ Error rate = 0%  
 ✅ TPS > 10 tokens/sec  
 ✅ Model alias displays (not internal ID)  
-✅ All visualizations show meaningful data  
+✅ All visualisations show meaningful data  
 ✅ Performance score > 50/100  
 ✅ Charts and tables populated correctly  
 

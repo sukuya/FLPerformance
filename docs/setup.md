@@ -20,7 +20,7 @@ Before you begin, ensure you have:
 - **RAM:** 32 GB or more
 
 **ARM64 Windows Compatibility (January 2026):**
-- **Frontend Features**: ✅ All visualizations and UI components work perfectly
+- **Frontend Features**: ✅ All visualisations and UI components work perfectly
 - **Backend Integration**: ✅ APIs, data processing, and storage functional
 - **Model Inference**: ⚠️ Foundry Local compatibility issues on Snapdragon systems
 - **Recommendation**: Use x64 Windows/Linux systems for full functionality
@@ -174,7 +174,7 @@ Test-NetConnection -ComputerName "127.0.0.1" -Port 58123  # May fail
 ```
 
 **Solutions:**
-1. **Explore Frontend**: All visualizations work perfectly regardless of backend
+1. **Explore Frontend**: All visualisations work perfectly regardless of backend
 2. **Alternative Testing**: Use x64 Windows/Linux systems for full functionality
 3. **Mock Data**: Modify storage.json to test with sample benchmark results
 4. **Alternative Backends**: Consider Ollama, ONNX Runtime, or Hugging Face Transformers
